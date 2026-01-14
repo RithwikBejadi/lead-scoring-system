@@ -1,9 +1,12 @@
 const mongoose = require("mongoose");
 
-module.exports = mongoose.model("Event", new mongoose.Schema({
+const EventSchema = new mongoose.Schema({
   eventId: { type: String, unique: true },
-  leadId: mongoose.Types.ObjectId,
+  leadId: mongoose.Schema.Types.ObjectId,
   eventType: String,
   timestamp: Date,
-  processed: { type: Boolean, default: false }
-}));
+  metadata: Object,
+  processed: Boolean
+});
+
+module.exports = mongoose.model("Event", EventSchema);
