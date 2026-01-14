@@ -7,53 +7,48 @@ const ScoringRule = require("./models/ScoringRule");
 console.log("Processor loaded and waiting for jobs...");
 
 eventQueue.process(async (job) => {
-  try {
-    console.log("JOB RECEIVED:", job.data);
+  const { eventId } = job.data;
+  console.log("JOB RECEIVED:", eventId);
 
-    const { eventId } = job.data;
+  // lock only unprocessed event
+  const event = await Event.findOne({ eventId, processed: false });
+  if (!event) return;
 
-    const event = await Event.findOne({ eventId });
-    console.log("EVENT FOUND:", event);
+  const lead = await Lead.findById(event.leadId);
+  if (!lead) {
+    console.log("ORPHAN EVENT:", eventId);
+    await Event.updateOne({ _id: event._id }, { $set: { processed: true } });
+    return;
+  }
 
-    if (!event || event.processed) return;
+  const events = await Event.find({
+    leadId: event.leadId,
+    processed: false
+  }).sort({ timestamp: 1 });
 
-    const pendingEvents = await Event.find({
-      leadId: event.leadId,
-      processed: false
-    }).sort({ timestamp: 1 });
+  for (const ev of events) {
+    const rule = await ScoringRule.findOne({ eventType: ev.eventType });
+    const delta = rule ? rule.points : 0;
 
-    console.log("PENDING EVENTS:", pendingEvents.length);
+    const oldScore = lead.currentScore;
+    lead.currentScore += delta;
 
-    const lead = await Lead.findById(event.leadId);
-    console.log("PROCESSING LEAD:", lead.email);
+    await Lead.updateOne(
+      { _id: lead._id },
+      { $set: { currentScore: lead.currentScore } }
+    );
 
-    for (const ev of pendingEvents) {
-      const oldScore = lead.currentScore;
+    await ScoreHistory.create({
+      leadId: lead._id,
+      eventId: ev.eventId,
+      oldScore,
+      newScore: lead.currentScore,
+      delta,
+      timestamp: new Date()
+    });
 
-      const rule = await ScoringRule.findOne({ eventType: ev.eventType });
-      const delta = rule ? rule.points : 0;
+    await Event.updateOne({ _id: ev._id }, { $set: { processed: true } });
 
-      lead.currentScore += delta;
-      await lead.save();
-
-      await ScoreHistory.create({
-        leadId: lead._id,
-        eventId: ev.eventId,
-        oldScore,
-        newScore: lead.currentScore,
-        delta,
-        timestamp: new Date()
-      });
-
-      ev.processed = true;
-      await ev.save();
-
-      console.log(
-        `Processed ${ev.eventType} (${ev.eventId}) → +${delta}, new score ${lead.currentScore}`
-      );
-    }
-  } catch (err) {
-    console.error("WORKER ERROR:", err);
-    throw err;
+    console.log(`Processed ${ev.eventType} → +${delta}, score=${lead.currentScore}`);
   }
 });

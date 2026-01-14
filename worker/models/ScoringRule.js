@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
 
-module.exports = mongoose.model("ScoringRule", new mongoose.Schema({
-  eventType: String,
-  points: Number
-}));
+const ScoringRuleSchema = new mongoose.Schema({
+  eventType: { type: String, unique: true },
+  points: { type: Number, required: true }
+});
+
+module.exports = mongoose.model("ScoringRule", ScoringRuleSchema);
