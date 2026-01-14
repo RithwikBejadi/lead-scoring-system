@@ -3,6 +3,9 @@ const express = require("express");
 const mongoose = require("mongoose");
 const queue = require("../worker/queue");
 const Event = require("../worker/models/Event");
+const Lead = require("../worker/models/Lead");
+const ScoreHistory = require("../worker/models/ScoreHistory");
+
 
 const app = express();
 app.use(express.json());
