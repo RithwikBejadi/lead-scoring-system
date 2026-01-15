@@ -6,7 +6,8 @@ const EventSchema = new mongoose.Schema({
   eventType: { type: String, required: true },
   timestamp: { type: Date, required: true },
   metadata: Object,
-  processed: { type: Boolean, default: false }
+  processed: { type: Boolean, default: false },
+  processing: { type: Boolean, default: false }
 }, { timestamps: true });
 
 module.exports = mongoose.model("Event", EventSchema);

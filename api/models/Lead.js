@@ -5,7 +5,8 @@ const LeadSchema = new mongoose.Schema({
   email: String,
   company: String,
   currentScore: Number,
-  status: String
+  status: String,
+  processing: { type: Boolean, default: false, index: true }
 });
 
 module.exports = mongoose.model("Lead", LeadSchema);
