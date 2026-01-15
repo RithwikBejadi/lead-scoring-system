@@ -1,13 +1,8 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
-const eventQueue = require("./queue");
 require("./processor");
 
-async function start() {
-  await mongoose.connect(process.env.MONGO_URI);
+mongoose.connect(process.env.MONGO_URI).then(() => {
   console.log("MongoDB connected");
-
   console.log("Worker started...");
-}
-
-start();
+});
