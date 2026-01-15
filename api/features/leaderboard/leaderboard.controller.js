@@ -1,10 +1,12 @@
-const service = require("./leaderboard.service");
+const { getLeaderboard } = require("./leaderboard.service");
 
-exports.fetchLeaderboard = async (req, res) => {
+async function fetchLeaderboard(req, res, next) {
   try {
-    const leaders = await service.getLeaderboard();
-    res.json(leaders);
+    const result = await getLeaderboard(req.query);
+    res.json(result);
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch leaderboard" });
+    next(err);
   }
-};
+}
+
+module.exports = { fetchLeaderboard };

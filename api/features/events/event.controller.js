@@ -1,28 +1,12 @@
-const queue = require("../../../../queue/eventQueue");
-const Event = require("../../models/Event");
+const { ingestEvent } = require("./event.service");
 
-exports.ingestEvent = async (payload) => {
+async function createEvent(req, res, next) {
   try {
-    const event = await Event.create({
-      ...payload,
-      processed: false
-    });
-
-    // 🔥 QUEUE PER LEAD — SINGLE JOB GUARANTEE
-    await queue.add(
-      { leadId: event.leadId },
-      {
-        jobId: `lead-${event.leadId}`,
-        removeOnComplete: true,
-        attempts: 3,
-        backoff: 5000
-      }
-    );
-
-    return { status: "queued" };
-
-  } catch (e) {
-    if (e.code === 11000) return { status: "duplicate" };
-    throw e;
+    const result = await ingestEvent(req.body);
+    res.status(202).json(result);
+  } catch (err) {
+    next(err);
   }
-};
+}
+
+module.exports = { createEvent };

@@ -7,10 +7,50 @@ services:
     command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     ports:
       - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "try { rs.status(); } catch(e) { rs.initiate({_id:'rs0', members:[{_id:0, host:'mongo:27017'}]}); } rs.status().myState"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
 
   redis:
     image: redis:7
     container_name: lead-scoring-redis
     ports:
       - "6379:6379"
+
+  worker:
+    build:
+      context: .
+      dockerfile: ./worker/Dockerfile
+    container_name: lead-scoring-worker
+    env_file: .env
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: ./api/Dockerfile
+    container_name: lead-scoring-api
+    env_file: .env
+    ports:
+      - "4000:4000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
 
