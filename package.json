@@ -1,0 +1,27 @@
+{
+  "name": "lead-scoring-system",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RithwikBejadi/lead-scoring-system.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/RithwikBejadi/lead-scoring-system/issues"
+  },
+  "homepage": "https://github.com/RithwikBejadi/lead-scoring-system#readme",
+  "dependencies": {
+    "bull": "^4.16.5",
+    "dotenv": "^17.2.3",
+    "ioredis": "^5.9.1",
+    "mongoose": "^9.1.3"
+  }
+}

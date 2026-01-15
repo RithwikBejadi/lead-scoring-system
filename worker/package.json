@@ -1,12 +1,14 @@
 {
   "name": "worker",
   "version": "1.0.0",
-  "description": "",
+  "description": "Lead scoring worker service",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "dev": "NODE_ENV=development node index.js",
+    "prod": "NODE_ENV=production node index.js"
   },
-  "keywords": [],
+  "keywords": ["worker", "queue", "lead-scoring"],
   "author": "",
   "license": "ISC",
   "type": "commonjs",

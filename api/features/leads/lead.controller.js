@@ -1,19 +1,30 @@
-const service = require("./lead.service");
+const { getLeadById, getLeadHistory, createLead } = require("./lead.service");
 
-exports.fetchLead = async (req, res) => {
+async function fetchLead(req, res, next) {
   try {
-    const lead = await service.getLeadById(req.params.id);
+    const lead = await getLeadById(req.params.id);
     res.json(lead);
-  } catch {
-    res.status(500).json({ error: "Failed to fetch lead" });
+  } catch (err) {
+    next(err);
   }
-};
+}
 
-exports.fetchLeadHistory = async (req, res) => {
+async function fetchLeadHistory(req, res, next) {
   try {
-    const history = await service.getLeadHistory(req.params.id);
-    res.json(history);
-  } catch {
-    res.status(500).json({ error: "Failed to fetch history" });
+    const result = await getLeadHistory(req.params.id);
+    res.json(result);
+  } catch (err) {
+    next(err);
   }
-};
+}
+
+async function createNewLead(req, res, next) {
+  try {
+    const lead = await createLead(req.body);
+    res.status(201).json(lead);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { fetchLead, fetchLeadHistory, createNewLead };
