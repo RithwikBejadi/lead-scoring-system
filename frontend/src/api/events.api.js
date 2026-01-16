@@ -1,0 +1,21 @@
+import axios from 'axios';
+import { API_URL } from '../config';
+
+const api = axios.create({
+  baseURL: API_URL,
+  headers: { 'Content-Type': 'application/json' }
+});
+
+export const eventsApi = {
+  // Create new event (manual trigger)
+  create: async (eventData) => {
+    const response = await api.post('/events', eventData);
+    return response.data;
+  },
+
+  // Get events for a lead
+  getByLead: async (leadId) => {
+    const response = await api.get('/events', { params: { leadId } });
+    return response.data;
+  }
+};
