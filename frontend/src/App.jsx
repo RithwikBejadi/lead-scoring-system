@@ -1,7 +1,7 @@
 /**
  * FILE: App.jsx
- * PURPOSE: Main application router with ToastProvider wrapper
- * Contains all page routes and global drawers (ManualEventDrawer, BatchUploadDrawer)
+ * PURPOSE: Main application router with sidebar state management
+ * Contains all page routes and global drawers
  */
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -17,6 +17,7 @@ import BatchUploadDrawer from "./components/drawers/BatchUploadDrawer";
 function App() {
   const [isEventDrawerOpen, setIsEventDrawerOpen] = useState(false);
   const [isBatchDrawerOpen, setIsBatchDrawerOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
     <ToastProvider>
@@ -29,17 +30,43 @@ function App() {
               <Leads
                 onOpenDrawer={() => setIsEventDrawerOpen(true)}
                 onOpenBatchUpload={() => setIsBatchDrawerOpen(true)}
+                isSidebarOpen={isSidebarOpen}
+                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                onCloseSidebar={() => setIsSidebarOpen(false)}
               />
             }
           />
           <Route
             path="/leads/:id"
             element={
-              <LeadDetail onOpenDrawer={() => setIsEventDrawerOpen(true)} />
+              <LeadDetail
+                onOpenDrawer={() => setIsEventDrawerOpen(true)}
+                isSidebarOpen={isSidebarOpen}
+                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                onCloseSidebar={() => setIsSidebarOpen(false)}
+              />
             }
           />
-          <Route path="/rules" element={<ScoringRules />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route
+            path="/rules"
+            element={
+              <ScoringRules
+                isSidebarOpen={isSidebarOpen}
+                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                onCloseSidebar={() => setIsSidebarOpen(false)}
+              />
+            }
+          />
+          <Route
+            path="/leaderboard"
+            element={
+              <Leaderboard
+                isSidebarOpen={isSidebarOpen}
+                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                onCloseSidebar={() => setIsSidebarOpen(false)}
+              />
+            }
+          />
         </Routes>
 
         {/* Global Manual Event Drawer */}

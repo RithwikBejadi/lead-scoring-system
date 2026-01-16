@@ -75,12 +75,23 @@ function ManualEventDrawer({ isOpen, onClose }) {
 
     try {
       setSubmitting(true);
+
+      // Create timestamp from date and time inputs
+      const timestamp = new Date(`${formData.date}T${formData.time}`);
+
+      // Generate unique event ID
+      const eventId = `manual-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
+
       await eventsApi.create({
+        eventId,
         leadId: selectedLead._id,
         eventType: formData.eventType,
+        timestamp: timestamp.toISOString(),
         metadata: {
           notes: formData.notes,
-          timestamp: `${formData.date}T${formData.time}`,
+          source: "manual_entry",
         },
       });
 
@@ -104,7 +115,9 @@ function ManualEventDrawer({ isOpen, onClose }) {
       onClose();
     } catch (err) {
       console.error("[ManualEventDrawer] Submit error:", err);
-      showToast(err.message || "Failed to log event", "error");
+      const errorMessage =
+        err.response?.data?.error || err.message || "Failed to log event";
+      showToast(errorMessage, "error");
     } finally {
       setSubmitting(false);
     }
