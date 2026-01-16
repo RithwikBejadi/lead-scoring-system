@@ -16,6 +16,7 @@
  */
 
 require("dotenv").config();
+const express = require("express");
 const mongoose = require("mongoose");
 const eventQueue = require("../shared/queue");
 const { processLeadWorkflow } = require("./workflows/processLeadWorkflow");
@@ -24,6 +25,24 @@ const { startRecoveryLoop } = require("./utils/recoverLocks");
 const { waitForRules } = require("./services/scoringRulesCache");
 const { initAutomationRules } = require("./domain/automationEngine");
 const config = require("./config");
+
+// ===============================
+// Health Endpoint (for Render)
+// ===============================
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+app.get("/health", (req, res) => {
+  res.json({ 
+    status: "ok", 
+    service: "worker",
+    mongodb: mongoose.connection.readyState === 1 ? "connected" : "disconnected"
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`Worker health endpoint listening on port ${PORT}`);
+});
 
 // ===============================
 // MongoDB Connection with Retry
