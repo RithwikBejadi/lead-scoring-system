@@ -1,3 +1,15 @@
+/**
+ * FILE: intelligence.controller.js
+ * PURPOSE: Compute and return lead intelligence (stage, velocity, risk)
+ * PATTERN: Read-only endpoint - no side effects
+ * 
+ * INTELLIGENCE METRICS:
+ * - Stage: cold/warm/hot/qualified (based on score thresholds)
+ * - Velocity: Rate of score change (momentum indicator)
+ * - Risk: Stagnation + decay detection
+ * - Next Action: Recommended engagement type
+ */
+
 const Lead = require("../../models/Lead");
 const { computeIntelligence } = require("../../utils/intelligence");
 

@@ -1,5 +1,20 @@
+/**
+ * FILE: shared/queue/index.js
+ * PURPOSE: Redis-backed event queue for asynchronous lead processing
+ * PATTERN: Producer-Consumer (API pushes, Worker consumes)
+ * 
+ * GUARANTEES:
+ * - Retry on failure (5 attempts, exponential backoff)
+ * - Concurrency limiting (200 jobs/sec)
+ * - Job timeout protection (60s)
+ * - Stale job recovery
+ */
+
 const Queue = require("bull");
 
+// ===============================
+// Event Queue Configuration
+// ===============================
 const eventQueue = new Queue("lead-processing", {
   redis: {
     host: process.env.REDIS_HOST || "127.0.0.1",

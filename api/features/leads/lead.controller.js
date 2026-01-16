@@ -1,3 +1,13 @@
+/**
+ * FILE: lead.controller.js
+ * PURPOSE: HTTP handlers for lead CRUD operations
+ * PATTERN: Thin controllers - delegate to service layer
+ * 
+ * RELATED:
+ * - lead.service.js (business logic)
+ * - ../../models/Lead.js (data model)
+ */
+
 const { getLeadById, getLeadHistory, createLead } = require("./lead.service");
 
 async function fetchLead(req, res, next) {

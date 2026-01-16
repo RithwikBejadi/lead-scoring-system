@@ -1,3 +1,15 @@
+/**
+ * FILE: processLeadWorkflow.js
+ * PURPOSE: Core business logic for event-driven score calculation
+ * PATTERN: Transaction-based workflow with locking
+ * 
+ * GUARANTEES:
+ * - Idempotency: eventId uniqueness enforced in ScoreHistory
+ * - Ordering: Events sorted by timestamp before processing
+ * - Atomicity: All operations in single MongoDB transaction
+ * - Isolation: Per-lead lock prevents concurrent updates
+ */
+
 const Event = require("../models/Event");
 const Lead = require("../models/Lead");
 const ScoreHistory = require("../models/ScoreHistory");
@@ -6,28 +18,35 @@ const { calculateStage } = require("../domain/stageEngine");
 const logger = require("../utils/logger");
 
 async function processLeadWorkflow(leadId, session) {
+  // ===============================
+  // Per-Lead Lock Acquisition
+  // ===============================
   const lead = await Lead.findOneAndUpdate(
     { _id: leadId, processing: false },
     { $set: { processing: true } },
     { new: true, session }
   );
-  if (!lead) return;
+  if (!lead) return; // Another worker is processing this lead
 
   try {
-    // 1. Get current score from history (source of truth)
+    // ===============================
+    // Score History as Source of Truth
+    // ===============================
     const last = await ScoreHistory.findOne({ leadId })
       .sort({ timestamp: -1 })
       .select({ newScore: 1 })
       .session(session);
     let score = last ? last.newScore : 0;
 
-    // 2. Fetch unprocessed events
+    // ===============================
+    // Event Processing (ORDERED)
+    // ===============================
     const events = await Event.find({
       leadId,
       processed: false,
       queued: true,
       processing: false
-    }).sort({ timestamp: 1 }).session(session);
+    }).sort({ timestamp: 1 }).session(session); // Sort ensures ordering
 
     if (!events.length) {
       await Lead.updateOne({ _id: leadId }, { $set: { processing: false } }, { session });
@@ -38,10 +57,12 @@ async function processLeadWorkflow(leadId, session) {
     const ids = events.map(e => e._id);
     await Event.updateMany({ _id: { $in: ids } }, { $set: { processing: true } }, { session });
 
-    // 4. Calculate score deltas
+    // ===============================
+    // Score Calculation (Deterministic)
+    // ===============================
     const history = [];
     for (const ev of events) {
-      const delta = getRule(ev.eventType);
+      const delta = getRule(ev.eventType); // Business rule: event type → points
       history.push({
         leadId,
         eventId: ev.eventId,
@@ -53,13 +74,18 @@ async function processLeadWorkflow(leadId, session) {
       score += delta;
     }
 
-    // 5. Persist score history (idempotent)
+    // ===============================
+    // Idempotency Guarantee
+    // ===============================
+    // ScoreHistory has unique index on (leadId, eventId)
+    // Duplicate inserts are silently ignored
     try {
       await ScoreHistory.insertMany(history, { session, ordered: false });
     } catch (err) {
       if (!(err && (err.code === 11000 || err.name === "BulkWriteError"))) {
-        throw err;
+        throw err; // Only rethrow if not a duplicate key error
       }
+      // Duplicate events safely ignored - idempotency preserved
     }
 
     // 6. Mark events as processed
@@ -99,7 +125,16 @@ async function processLeadWorkflow(leadId, session) {
 
   } catch (err) {
     await Lead.updateOne({ _id: leadId }, { $set: { processing: false } }, { session }).catch(e => {
-      logger.error("Failed to unlock lead after error", { leadId, e: e.message });
+      logger.error("Failed to unlock lead after workflow error", { 
+        leadId, 
+        originalError: err.message,
+        unlockError: e.message 
+      });
+    });
+    logger.error("Lead workflow processing failed", {
+      leadId,
+      error: err.message,
+      stack: err.stack
     });
     throw err;
   }

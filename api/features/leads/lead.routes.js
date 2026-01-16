@@ -1,3 +1,13 @@
+/**
+ * FILE: lead.routes.js
+ * PURPOSE: HTTP routes for lead creation, retrieval, and intelligence
+ * FLOW: Client → API → Service → Queue (async processing)
+ * RELATED:
+ *   - lead.controller.js (CRUD operations)
+ *   - intelligence.controller.js (scoring intelligence)
+ *   - ../../../shared/queue (event queue)
+ */
+
 const router = require("express").Router();
 const controller = require("./lead.controller");
 const intelligenceController = require("./intelligence.controller");

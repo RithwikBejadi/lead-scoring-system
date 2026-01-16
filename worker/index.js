@@ -1,3 +1,20 @@
+/**
+ * FILE: worker/index.js
+ * PURPOSE: Background worker for asynchronous event processing
+ * PATTERN: Queue consumer - processes events from Redis queue
+ * 
+ * RESPONSIBILITIES:
+ * - Consume events from queue
+ * - Recalculate lead scores atomically
+ * - Execute automation rules
+ * - Ensure idempotency via transaction
+ * 
+ * RELATED:
+ * - ../shared/queue (event source)
+ * - workflows/processLeadWorkflow.js (business logic)
+ * - domain/automationEngine.js (automation triggers)
+ */
+
 require("dotenv").config();
 const mongoose = require("mongoose");
 const eventQueue = require("../shared/queue");
@@ -8,6 +25,9 @@ const { waitForRules } = require("./services/scoringRulesCache");
 const { initAutomationRules } = require("./domain/automationEngine");
 const config = require("./config");
 
+// ===============================
+// MongoDB Connection with Retry
+// ===============================
 async function connectMongo() {
   while (true) {
     try {
@@ -37,9 +57,13 @@ connectMongo()
     process.exit(1);
   });
 
+// ===============================
+// Event Processing (ASYNC / WORKER)
+// ===============================
 eventQueue.process(config.worker.concurrency, async job => {
   const session = await mongoose.startSession();
   try {
+    // Transaction ensures atomic score updates
     await session.withTransaction(async () => {
       await processLeadWorkflow(job.data.leadId, session);
     }, { maxCommitTimeMS: config.worker.maxJobTime });
@@ -47,7 +71,7 @@ eventQueue.process(config.worker.concurrency, async job => {
     await session.endSession();
   }
 
-  // Execute automations post-commit with fresh lead state
+  // Execute automations post-commit (email, webhooks, etc.)
   await executeAutomationsForLead(job.data.leadId);
 });
 

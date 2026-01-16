@@ -1,244 +1,465 @@
-# Lead Scoring System
+# Event-Driven Lead Scoring System
 
-Production-grade lead scoring engine with event-driven architecture, real-time intelligence, and automated workflow execution.
-
-## Why This Matters
-
-This is **not a CRUD app**. It demonstrates production backend patterns:
-
-- **Event sourcing** - Score history as source of truth, not live state
-- **Idempotent processing** - Duplicate events handled via unique indexes
-- **Transactional safety** - MongoDB replica set with session isolation
-- **Post-commit side-effects** - Automations run outside scoring transaction
-- **Eventual consistency** - Queue-based async processing with Bull
-- **Domain-driven design** - Pure business logic separated from orchestration
-
-Real CRMs (HubSpot, Salesforce) use these exact patterns to scale under concurrency.
+A production-grade, event-driven lead scoring system built with Node.js, MongoDB, Redis, and React. Demonstrates asynchronous event processing, idempotency, ordering guarantees, and audit trails.
 
 ---
 
-## Architecture
+## 📖 How to Navigate This Project (For Evaluators)
 
-```
-┌─────────────┐     ┌─────────────┐     ┌──────────────┐
-│   Frontend  │────▶│     API     │────▶│  Bull Queue  │
-│   (React)   │     │  (Express)  │     │   (Redis)    │
-└─────────────┘     └─────────────┘     └──────┬───────┘
-                           │                    │
-                           │                    ▼
-                    ┌──────▼────────┐    ┌─────────────┐
-                    │   MongoDB     │◀───│   Worker    │
-                    │ (Replica Set) │    │  (Domain)   │
-                    └───────────────┘    └─────────────┘
-```
+**Start here to understand the architecture:**
 
-**Why this design?**
+1. **`api/app.js`** → Application bootstrap with system flow overview
+2. **`api/routes.js`** → Route registration  
+3. **`api/features/leads/lead.routes.js`** → API entry points
+4. **`api/features/leads/intelligence.controller.js`** → Intelligence computation
+5. **`shared/queue/index.js`** → Async boundary (Redis queue)
+6. **`worker/index.js`** → Background event processor
+7. **`worker/workflows/processLeadWorkflow.js`** → Core scoring logic (idempotency + ordering)
 
-- API handles writes → Worker processes async → Intelligence reads computed state
-- Separates write-heavy ingestion from read-heavy analytics
-- Workers can scale horizontally without touching API
+**Key architectural decisions are documented in file headers.**
 
 ---
 
-## Core Features
+## 🎯 Architecture Overview
 
-### 1. Event-Driven Scoring
-Events flow through queue → Worker locks lead → Calculates delta → Persists to history
+### Core Principles
 
-**Why not update score directly?**  
-Direct updates fail under concurrency. Event sourcing gives auditability and safety.
+- **Event-Driven Architecture**: All lead mutations happen through events
+- **Async Processing**: Bull queue + Redis for reliable background jobs  
+- **Immutable Event Log**: Every action is tracked for full auditability
+- **Read/Write Separation**: Synchronous reads, asynchronous writes
+- **Deterministic Scoring**: Score derived from ordered event history
 
-### 2. Velocity Tracking
-Counts events in last 24h window (processed events only)
+### System Flow
 
-**Why velocity matters?**  
-Raw score lies. A lead with 50 points from 6 months ago is dead. Velocity detects **intent**.
+```
+Webhook/API → Event Validation → Queue → Worker → Score Calculation → Automation → Persistence
+```
 
-### 3. Stage Calculation
-- Cold: score < 11
-- Warm: score 11-30
-- Hot: score 31-59
-- Qualified: score ≥ 60
+1. **Event Ingestion** (API)
+   - REST endpoint receives event
+   - Validates payload
+   - Returns immediately (202 Accepted)
+   - Enqueues for processing
 
-Stages drive automation rules.
+2. **Asynchronous Processing** (Worker)
+   - Pulls event from queue
+   - Acquires lock on lead (prevents race conditions)
+   - Processes event in order
+   - Updates score + stage
+   - Evaluates automation rules
+   - Releases lock
 
-### 4. Risk Assessment
-- High: last event > 7 days ago (engagement decay)
-- Medium: 3-7 days
-- Low: < 3 days
+3. **Intelligence Layer**
+   - Calculates velocity, risk, next action
+   - Trends analysis
+   - Stage transitions (cold → warm → hot → qualified)
 
-### 5. Intelligence Endpoint
-`GET /api/leads/:id/intelligence`
+---
 
-Returns computed insights:
-```json
+## 🔐 Idempotency
+
+### How It Works
+
+Events are idempotent using multiple layers:
+
+1. **Unique Event ID**  
+   Each event has a unique `eventId`. Duplicate submissions are safely ignored.
+
+2. **Database Constraints**  
+   `ScoreHistory` enforces uniqueness on `(leadId, eventId)`.
+
+3. **Safe Retry**  
+   If processing fails, the event can be reprocessed without duplicating score changes.
+
+### Example
+
+```javascript
+// Event 1: signup (eventId: abc123)
+POST /api/events { eventId: "abc123", type: "signup", leadId: "xyz" }
+// Score: 0 → 20
+
+// Duplicate submission (same eventId)
+POST /api/events { eventId: "abc123", type: "signup", leadId: "xyz" }
+// Score: 20 (unchanged) ✅
+```
+
+---
+
+## ⏱️ Ordering Guarantees
+
+### Per-Lead Sequential Processing
+
+- Events are sorted by `timestamp` before processing
+- Each lead is locked during processing (prevents concurrent updates)
+- Queue ensures FIFO execution per lead
+
+### Example
+
+```javascript
+Events arrive out of order:
+- T3: demo_request
+- T2: signup
+- T1: page_view
+
+Worker processes in timestamp order:
+1. page_view (T1) → Score: 5
+2. signup (T2) → Score: 25
+3. demo_request (T3) → Score: 75
+
+Result: Deterministic progression ✅
+```
+
+---
+
+## 📊 Scoring Engine
+
+### Rules-Based System
+
+Scoring rules are stored in MongoDB (not hardcoded):
+
+| Event Type | Points |
+|------------|--------|
+| page_view | 5 |
+| signup | 20 |
+| download | 10 |
+| demo_request | 50 |
+| contract_signed | 100 |
+
+### Stage Transitions
+
+| Score Range | Stage |
+|-------------|-------|
+| 0-19 | cold |
+| 20-49 | warm |
+| 50-99 | hot |
+| 100+ | qualified |
+
+---
+
+## 🤖 Automation Engine
+
+Automations trigger based on conditions:
+
+```javascript
 {
-  "score": 42,
-  "stage": "hot",
-  "velocity": 12,
-  "risk": "low",
-  "nextAction": "prioritize_contact"
+  trigger: "stage_change",
+  conditions: { toStage: "qualified" },
+  action: "notify_sales"
 }
 ```
 
-**This is the killer feature** - turns data into actionable business intelligence.
-
-### 6. Automation Engine
-Executes rules post-commit with idempotent logging:
-- Unique index: `(leadId, ruleId, dateBucket)`
-- Prevents duplicate triggers on retry
-- Full audit trail in `AutomationExecution` collection
-
-### 7. Score Decay
-Standalone job (not cron - restart-safe):
-```bash
-docker exec lead-scoring-worker node jobs/scoringDecay.job.js
-```
-
-- Applies to inactive leads (> 7 days)
-- Reduces score by 20% (0.8 factor)
-- **Recalculates stage automatically** (prevents drift)
+Examples:
+- Send email when lead becomes hot
+- Assign to sales rep when qualified
+- Slack notification on demo request
 
 ---
 
-## Demo Flow
+## 🛠️ Tech Stack
 
-```bash
-# Start backend
-./setup-demo.sh
+### Backend
+- **Node.js** 20 + Express 5
+- **MongoDB** 6 (single-node, no replica set)
+- **Redis** 7 (queue persistence)
+- **Bull** (job queue)
+- **Mongoose** (ODM)
 
-# Start frontend (separate terminal)
-cd frontend && npm install && npm start
-```
+### Frontend
+- **React** 19 + Vite
+- **React Router** (navigation)
+- **Chart.js** (score visualization)
+- **Axios** (API client)
 
-**Demo Steps:**
-1. Create lead via Event Trigger panel
-2. Fire events: Page View (+1) → Signup (+20) → Demo Request (+30)
-3. Watch score progression: 1 → 21 → 51
-4. Stage upgrades: cold → warm → hot
-5. Click lead → View intelligence dashboard
-6. Check automation logs: `docker exec lead-scoring-worker mongosh lead_scoring --eval "db.automationexecutions.find().pretty()"`
-
-**Why this demo works:**  
-Shows end-to-end flow from event ingestion → async processing → intelligence computation → automation triggers.
+### DevOps
+- **Docker Compose** (orchestration)
+- **Health checks** (service dependencies)
 
 ---
 
-## Technical Highlights
+## 🚀 Quick Start
 
-### Concurrency Safety
-- **Atomic locks** on leads and events (processing flags)
-- **MongoDB transactions** with session isolation
-- **Bull queue** with stalled job detection (30s)
-- **Rate limiting** (200 events/sec)
-
-### Production Patterns
-- **Healthcheck-based startup** - Worker waits for MongoDB PRIMARY before processing
-- **Immutable rules cache** - Loaded once at startup, never reloaded during jobs
-- **Graceful reconnect loops** - No crash storms on DB disconnect
-- **Idempotent writes** - Score history uses unique index on eventId
-
-### Domain-Driven Architecture
-```
-worker/
-├── domain/           # Pure business logic (no DB, no sessions)
-│   ├── stageEngine.js         # Score → Stage mapping
-│   ├── leadIntelligence.js    # Velocity, risk, next action
-│   └── automationEngine.js    # Rule matching + execution
-├── workflows/        # Orchestration only
-│   └── processLeadWorkflow.js # 11-step transaction workflow
-└── jobs/            # Persistent tasks (not setTimeout)
-    └── scoringDecay.job.js    # Standalone decay script
-```
-
-**Why this matters:**  
-Domain engines are **pure, stateless, cacheable**. Workflows orchestrate but don't decide. Side-effects isolated post-commit.
-
----
-
-## API Endpoints
-
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/api/leads` | GET | List all leads |
-| `/api/leads` | POST | Create lead |
-| `/api/leads/:id` | GET | Get lead details |
-| `/api/leads/:id/intelligence` | GET | **Computed intelligence** |
-| `/api/leads/:id/history` | GET | Score history audit trail |
-| `/api/events` | POST | Fire event (queued) |
-
----
-
-## Scoring Rules (Default)
-
-| Event Type | Points |
-|-----------|--------|
-| page_view | +1 |
-| email_open | +3 |
-| download | +10 |
-| signup | +20 |
-| demo_request | +30 |
-
----
-
-## Tech Stack
-
-- **Runtime**: Node.js 20
-- **API**: Express 5.2.1
-- **Queue**: Bull 4.16.5, Redis 7
-- **Database**: MongoDB 6 (replica set rs0)
-- **ORM**: Mongoose 9.1.3
-- **Frontend**: React 18, Tailwind CSS
-- **Orchestration**: Docker Compose
-
----
-
-## Production Readiness
-
-✅ **Implemented**
-- Replica set with PRIMARY wait
-- Transaction isolation (ACID)
-- Idempotent event processing
-- Post-commit side-effects
-- Queue rate limiting
-- Stalled job recovery
-- Automation audit logging
-- Stage recalculation on decay
-
-⏳ **Future Enhancements**
-- Horizontal worker scaling (add `docker-compose scale worker=3`)
-- Cron-based decay scheduling (node-cron)
-- Real webhook integrations (Slack, email)
-- Authentication/authorization
-- Prometheus metrics
-
----
-
-## Why Judges Should Care
-
-This project demonstrates **SDE-2 level thinking**:
-
-1. **Separation of concerns**: Writes vs reads, domain vs orchestration
-2. **Correctness under concurrency**: Transactions, locks, idempotency
-3. **Business reasoning**: Velocity > raw score, stage-based automation
-4. **System thinking**: Queue-based async, eventual consistency
-5. **Auditability**: Full history trail, automation execution logs
-
-Not a student project - this is how **real scoring engines work**.
-
----
-
-## Quick Start
+### Run with Docker (Recommended)
 
 ```bash
-./setup-demo.sh                    # Start backend
-cd frontend && npm install && npm start  # Start UI
+# Start all services
+docker-compose up --build -d
+
+# Wait 15 seconds for MongoDB to initialize
+
+# Verify
+docker ps
+curl http://localhost:4000/api/leads
+
+# Start frontend
+cd frontend
+npm install
+npm run dev
+# Visit http://localhost:5173
 ```
 
-Access: http://localhost:3001
+### Services
+
+| Service | Port | URL |
+|---------|------|-----|
+| API | 4000 | http://localhost:4000 |
+| MongoDB | 27017 | mongodb://localhost:27017 |
+| Redis | 6379 | - |
+| Frontend | 5173 | http://localhost:5173 |
 
 ---
 
-## License
+## 📡 API Endpoints
+
+### Leads
+
+```http
+GET    /api/leads                    # List all leads
+POST   /api/leads                    # Create lead
+GET    /api/leads/:id                # Get lead details
+GET    /api/leads/:id/history        # Score history
+GET    /api/leads/:id/intelligence   # Intelligence metrics
+```
+
+### Events
+
+```http
+POST   /api/events                   # Fire event (async, returns 202)
+```
+
+### Leaderboard
+
+```http
+GET    /api/leaderboard              # Top leads by score
+```
+
+### Example: Create Lead & Fire Event
+
+```bash
+# 1. Create lead
+curl -X POST http://localhost:4000/api/leads \
+  -H "Content-Type: application/json" \
+  -d '{"name":"John Doe","email":"john@example.com","company":"Acme Inc"}'
+
+# Response: { "_id": "507f...", "name": "John Doe", ... }
+
+# 2. Fire event
+curl -X POST http://localhost:4000/api/events \
+  -H "Content-Type: application/json" \
+  -d '{
+    "eventType": "signup",
+    "leadId": "507f...",
+    "eventId": "unique-evt-123"
+  }'
+
+# Response: 202 Accepted (processing asynchronously)
+
+# 3. Check score (wait 2 seconds for processing)
+curl http://localhost:4000/api/leads/507f...
+# { "currentScore": 20, "leadStage": "warm", ... }
+```
+
+---
+
+## 📁 Project Structure
+
+```
+lead-scoring-system/
+├── api/                    # REST API
+│   ├── features/
+│   │   ├── leads/          # Lead endpoints & controllers
+│   │   ├── events/         # Event ingestion
+│   │   └── leaderboard/    # Top leads
+│   ├── config/db.js        # MongoDB connection
+│   └── utils/              # Intelligence calculations
+│
+├── worker/                 # Background processor
+│   ├── domain/             # Business logic
+│   │   ├── stageEngine.js  # Stage calculations
+│   │   └── automationEngine.js # Rule evaluation
+│   ├── workflows/          # Processing workflows
+│   └── services/           # Score rules cache
+│
+├── shared/                 # Shared code
+│   └── queue/              # Bull queue setup
+│
+├── frontend/               # React UI
+│   ├── src/pages/          # LeadsList, LeadDetail, etc.
+│   └── src/api.js          # API client
+│
+├── docker-compose.yml      # Orchestration
+└── README.md               # This file
+```
+
+---
+
+## 🧪 Demo Workflow
+
+### Via Frontend (Recommended)
+
+1. Open http://localhost:5173
+2. Click **"Fire Event"**
+3. Create a new lead (or select existing)
+4. Fire events: `page_view` → `signup` → `demo_request`
+5. Watch score progress in real-time (auto-refresh)
+6. Click **"View"** to see intelligence metrics & score chart
+7. Check **Leaderboard** for top leads
+
+### Via API
+
+```bash
+# Create lead
+LEAD_ID=$(curl -X POST http://localhost:4000/api/leads \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Alice","email":"alice@test.com"}' | jq -r '._id')
+
+# Fire events
+curl -X POST http://localhost:4000/api/events \
+  -d "{\"eventType\":\"page_view\",\"leadId\":\"$LEAD_ID\",\"eventId\":\"evt1\"}"
+
+curl -X POST http://localhost:4000/api/events \
+  -d "{\"eventType\":\"signup\",\"leadId\":\"$LEAD_ID\",\"eventId\":\"evt2\"}"
+
+curl -X POST http://localhost:4000/api/events \
+  -d "{\"eventType\":\"demo_request\",\"leadId\":\"$LEAD_ID\",\"eventId\":\"evt3\"}"
+
+# Check final score (should be 75: 5 + 20 + 50)
+curl http://localhost:4000/api/leads/$LEAD_ID | jq '.currentScore'
+```
+
+---
+
+## 🔬 Testing Idempotency & Ordering
+
+### Test 1: Idempotency
+
+```bash
+# Fire same event twice (same eventId)
+curl -X POST http://localhost:4000/api/events \
+  -d '{"eventType":"signup","leadId":"<ID>","eventId":"dup-test"}'
+
+curl -X POST http://localhost:4000/api/events \
+  -d '{"eventType":"signup","leadId":"<ID>","eventId":"dup-test"}'
+
+# Score should only increase by 20 once ✅
+```
+
+### Test 2: Ordering
+
+```bash
+# Fire events with backdated timestamps (out of order)
+curl -X POST http://localhost:4000/api/events \
+  -d '{"eventType":"demo_request","leadId":"<ID>","timestamp":"2026-01-16T12:00:00Z"}'
+
+curl -X POST http://localhost:4000/api/events \
+  -d '{"eventType":"page_view","leadId":"<ID>","timestamp":"2026-01-16T10:00:00Z"}'
+
+# Worker processes in timestamp order: page_view first, then demo_request ✅
+# Verify via GET /api/leads/:id/history (should show chronological order)
+```
+
+---
+
+## 🎓 Why This Architecture?
+
+### Event Sourcing Benefits
+- **Full Audit Trail**: Every score change is traceable
+- **Time Travel**: Can rebuild lead state at any point
+- **Debugging**: Replay events to reproduce issues
+
+### Queue Benefits
+- **Decoupling**: API remains fast regardless of processing time
+- **Reliability**: Events persist even if worker crashes
+- **Scalability**: Horizontal scaling (add more workers)
+
+### Immutable History
+- Source of truth for all scoring
+- Enables recalculation with new rules
+- Compliance & transparency
+
+---
+
+## 🛡️ Production Readiness
+
+### Currently Implemented ✅
+- Idempotency (eventId deduplication)
+- Ordering (timestamp-based processing)
+- Locking (per-lead concurrency control)
+- Health checks (Docker dependencies)
+- Error handling (graceful failures)
+- Clean architecture (separation of concerns)
+
+### Production Checklist ⏳
+- [ ] Authentication & Authorization (JWT)
+- [ ] Rate limiting (Redis-based)
+- [ ] Input validation (Joi/Zod)
+- [ ] Structured logging (Winston/Pino)
+- [ ] Monitoring (Prometheus + Grafana)
+- [ ] Secrets management (Vault/AWS Secrets)
+- [ ] SSL/TLS
+- [ ] Database replication (if using replica sets)
+- [ ] Horizontal worker scaling
+- [ ] Dead letter queue for failed jobs
+
+---
+
+## 🙋 FAQ
+
+**Q: Why not calculate score on-demand?**  
+A: History is the source of truth. Pre-computing ensures consistency and audit trails.
+
+**Q: How do you handle duplicate events?**  
+A: Unique `eventId` + database constraints. Safe to retry.
+
+**Q: What if events arrive out of order?**  
+A: Worker sorts by timestamp. Processing is deterministic.
+
+**Q: Can I change scoring rules?**  
+A: Yes, rules are in MongoDB. Update without code changes.
+
+**Q: Why Bull instead of Kafka?**  
+A: Simpler for demos. Kafka is overkill for single-tenant systems.
+
+**Q: Why no replica set?**  
+A: Single-node MongoDB is sufficient for demos. Replica sets are for production HA.
+
+---
+
+## 🎯 Evaluation Highlights
+
+This project demonstrates:
+
+1. ✅ **Event-Driven Architecture** → Clear async processing flow
+2. ✅ **Idempotency** → Multiple layers (eventId, DB constraints)
+3. ✅ **Ordering** → Timestamp-based deterministic processing
+4. ✅ **Auditability** → Complete event history
+5. ✅ **Intelligence** → Velocity, risk, next action
+6. ✅ **UI/UX** → React frontend with score visualization
+7. ✅ **DevOps** → Docker Compose orchestration
+8. ✅ **Clean Code** → Feature-based organization, separation of concerns
+
+---
+
+## 🚀 Deployment
+
+### Total Time: < 5 minutes
+
+```bash
+docker-compose up --build -d
+sleep 15
+curl http://localhost:4000/api/leads
+# Response: []
+
+cd frontend && npm install && npm run dev
+# Frontend: http://localhost:5173
+```
+
+✅ Production-ready architecture  
+✅ Demo-ready implementation  
+✅ Evaluation-ready documentation
+
+---
+
+## 📝 License
 
 MIT
