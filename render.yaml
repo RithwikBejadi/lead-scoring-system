@@ -1,0 +1,44 @@
+services:
+  # API Service
+  - type: web
+    name: lead-scoring-api
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd api && npm install && cd ../shared/queue && npm install
+    startCommand: cd api && node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: MONGO_URI
+        sync: false
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        value: 6379
+
+  # Worker Service
+  - type: worker
+    name: lead-scoring-worker
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd worker && npm install && cd ../shared/queue && npm install
+    startCommand: cd worker && node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        value: 6379
+
+  # Redis (if using Render Redis add-on)
+  # - type: redis
+  #   name: lead-scoring-redis
+  #   plan: free
+  #   maxmemoryPolicy: noeviction
