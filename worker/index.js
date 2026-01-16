@@ -6,13 +6,15 @@ const { executeAutomationsForLead } = require("./domain/automationEngine");
 const { startRecoveryLoop } = require("./utils/recoverLocks");
 const { waitForRules } = require("./services/scoringRulesCache");
 const { initAutomationRules } = require("./domain/automationEngine");
-const waitForMongoPrimary = require("./utils/waitForMongoPrimary");
 const config = require("./config");
 
 async function connectMongo() {
   while (true) {
     try {
-      await mongoose.connect(process.env.MONGO_URI, config.mongodb.options);
+      await mongoose.connect(process.env.MONGO_URI, {
+        serverSelectionTimeoutMS: 5000,
+        maxPoolSize: 10
+      });
       break;
     } catch (err) {
       console.error("Mongo connect failed, retrying in 3s...", err.message);
@@ -23,8 +25,7 @@ async function connectMongo() {
 
 connectMongo()
   .then(async () => {
-    await waitForMongoPrimary();
-    console.log("Worker MongoDB connected & primary ready");
+    console.log("Worker MongoDB connected");
     await waitForRules();
     console.log("Scoring rules loaded - ready to process events");
     await initAutomationRules();

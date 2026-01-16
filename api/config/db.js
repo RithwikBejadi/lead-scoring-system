@@ -6,10 +6,8 @@ async function connectDB() {
   
   try {
     await mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 30000,
-      socketTimeoutMS: 45000,
-      directConnection: false,
-      replicaSet: "rs0"
+      serverSelectionTimeoutMS: 5000,
+      maxPoolSize: 10
     });
 
     console.log("MongoDB connected successfully");
