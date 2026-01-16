@@ -19,8 +19,8 @@ services:
       - key: REDIS_PORT
         value: 6379
 
-  # Worker Service
-  - type: worker
+  # Worker Service (deployed as web service for free tier compatibility)
+  - type: web
     name: lead-scoring-worker
     env: node
     region: oregon
