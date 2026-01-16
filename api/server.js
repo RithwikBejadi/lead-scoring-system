@@ -5,7 +5,10 @@ const PORT = process.env.PORT || 4000;
 
 async function startServer() {
   try {
-    await connectDB();
+    // Start DB connection in background (mongoose will retry)
+    connectDB().catch(err => {
+      console.error("Initial DB connection failed, will retry:", err.message);
+    });
     
     const server = app.listen(PORT, () => {
       console.log(`API server running on port ${PORT}`);
