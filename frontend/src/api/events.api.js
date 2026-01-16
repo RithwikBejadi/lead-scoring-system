@@ -1,21 +1,31 @@
-import axios from 'axios';
-import { API_URL } from '../config';
+/**
+ * FILE: src/api/events.api.js
+ * PURPOSE: API client for event operations including batch upload
+ */
+
+import axios from "axios";
+import { API_URL } from "../config";
 
 const api = axios.create({
   baseURL: API_URL,
-  headers: { 'Content-Type': 'application/json' }
+  headers: { "Content-Type": "application/json" },
 });
 
 export const eventsApi = {
-  // Create new event (manual trigger)
+  // Submit single event
   create: async (eventData) => {
-    const response = await api.post('/events', eventData);
+    const response = await api.post("/events", eventData);
     return response.data;
   },
 
-  // Get events for a lead
-  getByLead: async (leadId) => {
-    const response = await api.get('/events', { params: { leadId } });
+  // Batch upload events via file
+  batchUpload: async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await axios.post(`${API_URL}/events/batch`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
     return response.data;
-  }
+  },
 };
