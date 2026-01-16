@@ -161,13 +161,3 @@ export default function Leaderboard() {
     </div>
   );
 }
-                  <button className="btn btn-primary">View</button>
-                </Link>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
