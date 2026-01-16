@@ -9,14 +9,17 @@ while (rs.status().myState !== 1) {
 
 db = db.getSiblingDB('lead_scoring_system');
 
-db.scoringrules.insertMany([
-  { eventType: "visit", points: 5 },
-  { eventType: "signup", points: 20 },
-  { eventType: "download", points: 10 }
-], { ordered: false }).catch(e => {
+try {
+  db.scoringrules.insertMany([
+    { eventType: "visit", points: 5 },
+    { eventType: "signup", points: 20 },
+    { eventType: "download", points: 10 }
+  ], { ordered: false });
+  print("Scoring rules initialized");
+} catch (e) {
   if (e.code === 11000) {
     print("Rules already exist");
+  } else {
+    throw e;
   }
-});
-
-print("Scoring rules initialized");
+}

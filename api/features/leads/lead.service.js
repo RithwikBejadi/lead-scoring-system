@@ -42,12 +42,11 @@ async function getLeadHistory(leadId) {
 
 async function createLead(data) {
   if (!data.email) throw new ValidationError("Email is required");
-  if (!data.name) throw new ValidationError("Name is required");
 
   const lead = await Lead.create({
-    name: data.name,
+    name: data.name || '',
     email: data.email,
-    company: data.company,
+    company: data.company || '',
     currentScore: 0
   });
 

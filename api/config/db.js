@@ -1,10 +1,15 @@
 const mongoose = require("mongoose");
 
 async function connectDB() {
+  const mongoUri = process.env.MONGO_URI;
+  console.log("Connecting to MongoDB:", mongoUri);
+  
   try {
-    await mongoose.connect(process.env.MONGO_URI, {
-      serverSelectionTimeoutMS: 5000,
+    await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 30000,
       socketTimeoutMS: 45000,
+      directConnection: false,
+      replicaSet: "rs0"
     });
 
     console.log("MongoDB connected successfully");

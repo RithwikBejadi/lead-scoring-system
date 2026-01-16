@@ -1,12 +1,11 @@
 const Event = require("../models/Event");
 const Lead = require("../models/Lead");
 const ScoreHistory = require("../models/ScoreHistory");
-const AutomationRule = require("../models/AutomationRule");
-const { getRule } = require("./scoringRulesCache");
-const { calculateLeadStage, calculateVelocity } = require("./leadIntelligence");
+const { getRule } = require("../services/scoringRulesCache");
+const { calculateStage } = require("../domain/stageEngine");
 const logger = require("../utils/logger");
 
-async function processLeadEvents(leadId, session) {
+async function processLeadWorkflow(leadId, session) {
   const lead = await Lead.findOneAndUpdate(
     { _id: leadId, processing: false },
     { $set: { processing: true } },
@@ -15,12 +14,14 @@ async function processLeadEvents(leadId, session) {
   if (!lead) return;
 
   try {
+    // 1. Get current score from history (source of truth)
     const last = await ScoreHistory.findOne({ leadId })
       .sort({ timestamp: -1 })
       .select({ newScore: 1 })
       .session(session);
     let score = last ? last.newScore : 0;
 
+    // 2. Fetch unprocessed events
     const events = await Event.find({
       leadId,
       processed: false,
@@ -33,11 +34,12 @@ async function processLeadEvents(leadId, session) {
       return;
     }
 
+    // 3. Lock events
     const ids = events.map(e => e._id);
     await Event.updateMany({ _id: { $in: ids } }, { $set: { processing: true } }, { session });
 
+    // 4. Calculate score deltas
     const history = [];
-
     for (const ev of events) {
       const delta = getRule(ev.eventType);
       history.push({
@@ -51,49 +53,49 @@ async function processLeadEvents(leadId, session) {
       score += delta;
     }
 
+    // 5. Persist score history (idempotent)
     try {
       await ScoreHistory.insertMany(history, { session, ordered: false });
     } catch (err) {
-      if (!(err && (err.code === 11000 || (err.name === 'BulkWriteError')))) {
+      if (!(err && (err.code === 11000 || err.name === "BulkWriteError"))) {
         throw err;
       }
-      logger.debug("Ignored duplicate-key during insertMany for ScoreHistory");
     }
 
+    // 6. Mark events as processed
     await Event.updateMany(
       { _id: { $in: ids } },
       { $set: { processed: true, queued: false, processing: false } },
       { session }
     );
 
-    // Calculate velocity (events in last 24h)
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const recentEvents = await Event.countDocuments({
+    // 7. Calculate velocity (count events in last 24h)
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const eventsLast24h = await Event.countDocuments({
       leadId,
-      timestamp: { $gte: oneDayAgo },
-      processed: true
+      processed: true,
+      timestamp: { $gte: cutoff }
     }).session(session);
 
-    const velocityScore = calculateVelocity(recentEvents);
-    const leadStage = calculateLeadStage(score);
+    // 8. Derive stage from score
+    const stage = calculateStage(score);
 
+    // 9. Update lead with score, velocity, stage
     await Lead.updateOne(
       { _id: leadId },
-      { 
-        $set: { 
+      {
+        $set: {
           currentScore: score,
-          leadStage,
-          velocityScore,
-          eventsLast24h: recentEvents,
+          leadStage: stage,
+          eventsLast24h,
           lastEventAt: new Date(),
-          processing: false 
-        } 
+          processing: false
+        }
       },
       { session }
     );
 
-    // Check automation rules
-    await checkAutomationRules(leadId, leadStage, velocityScore, session);
+    // 10. Automation rules will be executed post-commit
 
   } catch (err) {
     await Lead.updateOne({ _id: leadId }, { $set: { processing: false } }, { session }).catch(e => {
@@ -103,23 +105,4 @@ async function processLeadEvents(leadId, session) {
   }
 }
 
-async function checkAutomationRules(leadId, leadStage, velocityScore, session) {
-  const rules = await AutomationRule.find({
-    whenStage: leadStage,
-    active: true,
-    minVelocity: { $lte: velocityScore }
-  }).session(session);
-
-  for (const rule of rules) {
-    logger.info("Automation triggered", {
-      leadId,
-      rule: rule.name,
-      action: rule.action,
-      stage: leadStage,
-      velocity: velocityScore
-    });
-    // TODO: Implement actual automation actions (webhook, email, CRM integration)
-  }
-}
-
-module.exports = { processLeadEvents };
+module.exports = { processLeadWorkflow };
