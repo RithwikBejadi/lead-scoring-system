@@ -23,10 +23,28 @@ const LeadSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  leadStage: {
+    type: String,
+    enum: ["cold", "warm", "hot", "qualified"],
+    default: "cold",
+    index: true
+  },
   status: {
     type: String,
     enum: ["cold", "warm", "hot", "qualified"],
     default: "cold"
+  },
+  lastEventAt: {
+    type: Date,
+    index: true
+  },
+  eventsLast24h: {
+    type: Number,
+    default: 0
+  },
+  velocityScore: {
+    type: Number,
+    default: 0
   },
   processing: {
     type: Boolean,

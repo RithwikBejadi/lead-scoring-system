@@ -1,9 +1,11 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
 const eventQueue = require("../shared/queue");
-const { processLeadEvents } = require("./services/eventProcessor");
+const { processLeadWorkflow } = require("./workflows/processLeadWorkflow");
+const { executeAutomationsForLead } = require("./domain/automationEngine");
 const { startRecoveryLoop } = require("./utils/recoverLocks");
 const { waitForRules } = require("./services/scoringRulesCache");
+const { initAutomationRules } = require("./domain/automationEngine");
 const waitForMongoPrimary = require("./utils/waitForMongoPrimary");
 const config = require("./config");
 
@@ -25,6 +27,8 @@ connectMongo()
     console.log("Worker MongoDB connected & primary ready");
     await waitForRules();
     console.log("Scoring rules loaded - ready to process events");
+    await initAutomationRules();
+    console.log("Automation rules loaded");
     startRecoveryLoop();
   })
   .catch(err => {
@@ -36,10 +40,13 @@ eventQueue.process(config.worker.concurrency, async job => {
   const session = await mongoose.startSession();
   try {
     await session.withTransaction(async () => {
-      await processLeadEvents(job.data.leadId, session);
+      await processLeadWorkflow(job.data.leadId, session);
     }, { maxCommitTimeMS: config.worker.maxJobTime });
   } finally {
     await session.endSession();
   }
+
+  // Execute automations post-commit with fresh lead state
+  await executeAutomationsForLead(job.data.leadId);
 });
 
