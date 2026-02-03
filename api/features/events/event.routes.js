@@ -7,6 +7,7 @@ const router = require("express").Router();
 const multer = require("multer");
 const { createEvent } = require("./event.controller");
 const { batchUploadEvents } = require("./batch.controller");
+const { handleIngestEvent } = require("./ingest.controller");
 
 // Configure multer for memory storage (files stay in memory as buffers)
 const upload = multer({
@@ -14,7 +15,11 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
 });
 
-// POST /api/events - Single event submission
+// POST /api/events/ingest - NEW ingestion endpoint (auto-creates leads)
+router.post("/ingest", handleIngestEvent);
+
+// ⚠️ DEPRECATED - Frontend must NOT use this endpoint
+// POST /api/events - Single event submission (internal/legacy only)
 router.post("/", createEvent);
 
 // POST /api/events/batch - Batch upload via CSV/JSON file
