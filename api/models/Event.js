@@ -19,6 +19,10 @@ const EventSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    sessionId: {
+      type: String,
+      index: true,
+    },
     properties: {
       type: mongoose.Schema.Types.Mixed,
       default: {},

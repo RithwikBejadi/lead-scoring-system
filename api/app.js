@@ -6,6 +6,7 @@
 const express = require("express");
 const http = require("http");
 const cors = require("cors");
+const path = require("path");
 const { Server } = require("socket.io");
 const routes = require("./routes");
 const { errorHandler, notFoundHandler } = require("./middleware/errorHandler");
@@ -38,11 +39,14 @@ app.use(
       }
     },
     credentials: true,
-  })
+  }),
 );
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+
+// Serve SDK files statically
+app.use("/sdk", express.static(path.join(__dirname, "sdk")));
 
 // Socket.IO setup
 const io = new Server(server, {

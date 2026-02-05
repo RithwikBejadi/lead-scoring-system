@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SDK Test Page</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 50px auto;
+        padding: 20px;
+      }
+      h1 {
+        color: #333;
+      }
+      .info-box {
+        background: #f0f9ff;
+        border: 1px solid #0ea5e9;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+      }
+      .info-box h2 {
+        margin-top: 0;
+        color: #0284c7;
+      }
+      code {
+        background: #f3f4f6;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: monospace;
+      }
+      .success {
+        background: #d1fae5;
+        border-color: #10b981;
+        color: #065f46;
+        padding: 12px;
+        border-radius: 6px;
+        margin: 15px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🎯 Lead Scoring SDK Test</h1>
+
+    <div class="info-box">
+      <h2>Test Instructions</h2>
+      <ol>
+        <li>Open DevTools → Network tab</li>
+        <li>Refresh this page</li>
+        <li>Look for POST request to <code>/api/ingest/event</code></li>
+        <li>Verify 202 Accepted response</li>
+        <li>Check MongoDB for new lead</li>
+        <li>Visit <code>/leads/:id/activity</code> to see timeline</li>
+      </ol>
+    </div>
+
+    <div class="success">
+      ✅ If you see this page, the SDK loaded successfully!
+    </div>
+
+    <h2>What's Being Tracked</h2>
+    <ul>
+      <li><strong>Event:</strong> page_view</li>
+      <li><strong>URL:</strong> <span id="current-url"></span></li>
+      <li><strong>Referrer:</strong> <span id="referrer"></span></li>
+      <li><strong>Title:</strong> <span id="title"></span></li>
+    </ul>
+
+    <script>
+      document.getElementById("current-url").textContent = window.location.href;
+      document.getElementById("referrer").textContent =
+        document.referrer || "(direct)";
+      document.getElementById("title").textContent = document.title;
+    </script>
+
+    <!-- Lead Scoring SDK -->
+    <script
+      src="http://localhost:4000/sdk/ls.js"
+      data-api-key="pk_e24f1378593ae9f50790952eaf8d778a07751f18f8d61f7c"
+    ></script>
+  </body>
+</html>
