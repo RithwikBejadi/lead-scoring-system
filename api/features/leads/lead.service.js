@@ -41,13 +41,16 @@ async function getLeadHistory(leadId) {
 }
 
 async function createLead(data) {
-  if (!data.email) throw new ValidationError("Email is required");
+  if (!data.projectId) throw new ValidationError("projectId is required");
+  if (!data.anonymousId) throw new ValidationError("anonymousId is required");
 
   const lead = await Lead.create({
-    name: data.name || '',
-    email: data.email,
-    company: data.company || '',
-    currentScore: 0
+    projectId: data.projectId,
+    anonymousId: data.anonymousId,
+    name: data.name || "",
+    email: data.email || "",
+    company: data.company || "",
+    currentScore: 0,
   });
 
   return lead;
@@ -58,5 +61,5 @@ module.exports = {
   getLeadHistory,
   createLead,
   LeadNotFoundError,
-  ValidationError
+  ValidationError,
 };
