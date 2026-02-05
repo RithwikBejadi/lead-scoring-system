@@ -10,9 +10,9 @@ const LeadSchema = new mongoose.Schema(
       index: true,
     },
     projectId: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Project",
       required: true,
-      trim: true,
       index: true,
     },
     // User info (optional - only filled when identified)

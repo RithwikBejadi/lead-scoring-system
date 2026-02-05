@@ -7,13 +7,11 @@ const api = axios.create({
 });
 
 export const eventsApi = {
-  // Create new event (manual trigger)
   create: async (eventData) => {
     const response = await api.post('/events', eventData);
     return response.data;
   },
 
-  // Get events for a lead
   getByLead: async (leadId) => {
     const response = await api.get('/events', { params: { leadId } });
     return response.data;
