@@ -3,25 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SDK Test Page</title>
+    <title>SDK Advanced Tracking Test</title>
     <style>
       body {
         font-family: Arial, sans-serif;
-        max-width: 800px;
+        max-width: 900px;
         margin: 50px auto;
         padding: 20px;
       }
       h1 {
         color: #333;
       }
-      .info-box {
+      .section {
         background: #f0f9ff;
         border: 1px solid #0ea5e9;
         border-radius: 8px;
         padding: 20px;
         margin: 20px 0;
       }
-      .info-box h2 {
+      .section h2 {
         margin-top: 0;
         color: #0284c7;
       }
@@ -39,40 +39,202 @@
         border-radius: 6px;
         margin: 15px 0;
       }
+      button,
+      input[type="submit"] {
+        background: #0ea5e9;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        margin: 5px;
+      }
+      button:hover,
+      input[type="submit"]:hover {
+        background: #0284c7;
+      }
+      input[type="text"],
+      input[type="email"] {
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        margin: 5px 0;
+        width: 100%;
+        max-width: 300px;
+      }
+      .test-group {
+        margin: 15px 0;
+        padding: 15px;
+        background: white;
+        border-radius: 6px;
+      }
     </style>
   </head>
   <body>
-    <h1>🎯 Lead Scoring SDK Test</h1>
-
-    <div class="info-box">
-      <h2>Test Instructions</h2>
-      <ol>
-        <li>Open DevTools → Network tab</li>
-        <li>Refresh this page</li>
-        <li>Look for POST request to <code>/api/ingest/event</code></li>
-        <li>Verify 202 Accepted response</li>
-        <li>Check MongoDB for new lead</li>
-        <li>Visit <code>/leads/:id/activity</code> to see timeline</li>
-      </ol>
-    </div>
+    <h1>🎯 Lead Scoring SDK - Advanced Tracking Test</h1>
 
     <div class="success">
-      ✅ If you see this page, the SDK loaded successfully!
+      ✅ SDK loaded! Now tracking: page_view, clicks, forms, custom events
     </div>
 
-    <h2>What's Being Tracked</h2>
-    <ul>
-      <li><strong>Event:</strong> page_view</li>
-      <li><strong>URL:</strong> <span id="current-url"></span></li>
-      <li><strong>Referrer:</strong> <span id="referrer"></span></li>
-      <li><strong>Title:</strong> <span id="title"></span></li>
-    </ul>
+    <!-- Test 1: Click Tracking -->
+    <div class="section">
+      <h2>Test 1: Click Tracking</h2>
+      <p>
+        Click any button or link below. Each click sends an event with
+        throttling (800ms).
+      </p>
+      <div class="test-group">
+        <button id="cta-button">Call to Action</button>
+        <button id="demo-request">Request Demo</button>
+        <a href="#pricing" id="pricing-link">View Pricing</a>
+      </div>
+      <p>
+        <small>Check Network tab for <code>click</code> events</small>
+      </p>
+    </div>
+
+    <!-- Test 2: Custom Event Tracking -->
+    <div class="section">
+      <h2>Test 2: Custom Event Names</h2>
+      <p>Elements with <code>data-ls-event</code> send custom event names.</p>
+      <div class="test-group">
+        <button data-ls-event="signup_clicked">Sign Up</button>
+        <button data-ls-event="demo_clicked">Book Demo</button>
+        <button data-ls-event="pricing_viewed">See Pricing</button>
+      </div>
+      <p>
+        <small
+          >These send <code>signup_clicked</code>, <code>demo_clicked</code>,
+          etc.</small
+        >
+      </p>
+    </div>
+
+    <!-- Test 3: Form Tracking -->
+    <div class="section">
+      <h2>Test 3: Form Submit Tracking</h2>
+      <p>
+        Submit form below. Only field <strong>names</strong> are tracked (NOT
+        values).
+      </p>
+      <div class="test-group">
+        <form
+          id="contact-form"
+          onsubmit="
+            event.preventDefault();
+            alert('Form submitted!');
+          "
+        >
+          <input
+            type="text"
+            name="full_name"
+            placeholder="Full Name"
+            required
+          />
+          <input type="email" name="email" placeholder="Email" required />
+          <input type="text" name="company" placeholder="Company" />
+          <input type="submit" value="Submit Contact Form" />
+        </form>
+      </div>
+      <p>
+        <small>Check for <code>form_submit</code> event with field names</small>
+      </p>
+    </div>
+
+    <!-- Test 4: Public API -->
+    <div class="section">
+      <h2>Test 4: Public API</h2>
+      <p>
+        Use <code>window.ls</code> API to send custom events programmatically.
+      </p>
+      <div class="test-group">
+        <button
+          onclick="window.ls.track('video_played', { videoId: 'intro-2024' })"
+        >
+          Track Video Play
+        </button>
+        <button
+          onclick="
+            window.ls.track('feature_explored', { feature: 'analytics' })
+          "
+        >
+          Track Feature Click
+        </button>
+        <button
+          onclick="
+            window.ls.identify('test@example.com', { plan: 'enterprise' })
+          "
+        >
+          Identify User
+        </button>
+      </div>
+      <p>
+        <small
+          >Open console and try:
+          <code>ls.track('custom_event', {key: 'value'})</code></small
+        >
+      </p>
+    </div>
+
+    <!-- Test 5: Session Duration -->
+    <div class="section">
+      <h2>Test 5: Session Duration</h2>
+      <p>
+        Session tracking is automatic. A <code>session_end</code> event fires on
+        page unload.
+      </p>
+      <div class="test-group">
+        <p>
+          <strong>Session started:</strong> <span id="session-start"></span>
+        </p>
+        <p><strong>Elapsed:</strong> <span id="elapsed">0s</span></p>
+        <button onclick="window.location.reload()">
+          Reload Page (triggers session_end)
+        </button>
+      </div>
+      <p>
+        <small
+          >Check for <code>session_end</code> with
+          <code>durationMs</code></small
+        >
+      </p>
+    </div>
+
+    <!-- SDK Info -->
+    <div class="section">
+      <h2>SDK Info</h2>
+      <ul>
+        <li><strong>Anonymous ID:</strong> <span id="anon-id"></span></li>
+        <li>
+          <strong>API Key:</strong>
+          <code>pk_e24f1378593ae9f50790952eaf8d778a07751f18f8d61f7c</code>
+        </li>
+      </ul>
+    </div>
 
     <script>
-      document.getElementById("current-url").textContent = window.location.href;
-      document.getElementById("referrer").textContent =
-        document.referrer || "(direct)";
-      document.getElementById("title").textContent = document.title;
+      // Display session info
+      const startTime = new Date();
+      document.getElementById("session-start").textContent =
+        startTime.toLocaleTimeString();
+
+      // Update elapsed time
+      setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime.getTime()) / 1000);
+        document.getElementById("elapsed").textContent = elapsed + "s";
+      }, 1000);
+
+      // Display anonymous ID after SDK loads
+      setTimeout(() => {
+        try {
+          const anonId = localStorage.getItem("ls_anonymous_id");
+          document.getElementById("anon-id").textContent = anonId || "Not set";
+        } catch (e) {
+          document.getElementById("anon-id").textContent =
+            "localStorage not available";
+        }
+      }, 100);
     </script>
 
     <!-- Lead Scoring SDK -->

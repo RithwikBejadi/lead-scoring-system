@@ -20,6 +20,119 @@ const MAX_SCORE = 10000; // Prevent score overflow
 const { calculateStage } = require("../domain/stageEngine");
 const logger = require("../utils/logger");
 
+/**
+ * Identity Resolution (Phase 2 Step 3)
+ * Handles anonymous → known lead transitions
+ *
+ * RULES:
+ * - (projectId + email) = ONE lead
+ * - Merge: Move all events from anonymous → known lead
+ * - Promote: Add email to anonymous lead if no known lead exists
+ * - Idempotent: Safe to run multiple times
+ *
+ * @param {Object} lead - Current (anonymous) lead
+ * @param {Object} session - MongoDB session for transaction
+ */
+async function resolveIdentity(lead, session) {
+  // Find any "identify" events for this lead with email
+  const identifyEvent = await Event.findOne({
+    leadId: lead._id,
+    eventType: "identify",
+    "properties.email": { $exists: true, $ne: null, $ne: "" },
+    processed: false,
+  })
+    .sort({ timestamp: 1 })
+    .session(session);
+
+  if (!identifyEvent) return; // No identity to resolve
+
+  const email = identifyEvent.properties.email.toLowerCase().trim();
+
+  if (!email) return; // Invalid email
+
+  // Check if lead already has this email
+  if (lead.email === email) {
+    logger.info("Lead already identified with this email", {
+      leadId: lead._id,
+      email,
+    });
+    return; // Already identified, nothing to do
+  }
+
+  // Look for existing known lead with this email
+  const knownLead = await Lead.findOne({
+    projectId: lead.projectId,
+    email: email,
+    _id: { $ne: lead._id }, // Exclude current lead
+  }).session(session);
+
+  if (knownLead) {
+    // MERGE: Known lead exists → move all events from anonymous to known
+    logger.info("Merging anonymous lead into known lead", {
+      anonymousId: lead._id,
+      knownId: knownLead._id,
+      email,
+    });
+
+    // Move all events (including identify event) to known lead
+    await Event.updateMany(
+      { leadId: lead._id },
+      { $set: { leadId: knownLead._id } },
+      { session },
+    );
+
+    // Move score history to known lead
+    await ScoreHistory.updateMany(
+      { leadId: lead._id },
+      { $set: { leadId: knownLead._id } },
+      { session },
+    );
+
+    // Delete anonymous lead (it's been merged)
+    await Lead.deleteOne({ _id: lead._id }, { session });
+
+    logger.info("Anonymous lead merged successfully", {
+      mergedFrom: lead._id,
+      mergedInto: knownLead._id,
+      email,
+    });
+
+    // Update lead reference to continue processing with known lead
+    Object.assign(lead, knownLead.toObject());
+    lead._id = knownLead._id;
+  } else {
+    // PROMOTE: No known lead → promote anonymous to known
+    logger.info("Promoting anonymous lead to known", {
+      leadId: lead._id,
+      email,
+    });
+
+    // Extract additional traits from identify event
+    const traits = identifyEvent.properties || {};
+    const updateFields = {
+      email: email,
+      ...(traits.name && { name: traits.name }),
+      ...(traits.company && { company: traits.company }),
+    };
+
+    await Lead.updateOne(
+      { _id: lead._id },
+      { $set: updateFields },
+      { session },
+    );
+
+    // Update lead object with new email
+    lead.email = email;
+    if (traits.name) lead.name = traits.name;
+    if (traits.company) lead.company = traits.company;
+
+    logger.info("Anonymous lead promoted to known", {
+      leadId: lead._id,
+      email,
+    });
+  }
+}
+
 async function processLeadWorkflow(leadId, session) {
   // ===============================
   // Per-Lead Lock Acquisition
@@ -37,6 +150,23 @@ async function processLeadWorkflow(leadId, session) {
   }
 
   try {
+    // ===============================
+    // Identity Resolution (Phase 2 Step 3)
+    // ===============================
+    // When "identify" event with email is found:
+    // - If known lead exists → merge anonymous into known
+    // - If no known lead → promote anonymous to known
+    try {
+      await resolveIdentity(lead, session);
+    } catch (identityErr) {
+      logger.error("Identity resolution failed - continuing with scoring", {
+        leadId: lead._id,
+        error: identityErr.message,
+        stack: identityErr.stack,
+      });
+      // Continue with scoring even if identity resolution fails
+    }
+
     // ===============================
     // Score History as Source of Truth
     // ===============================

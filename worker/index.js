@@ -114,3 +114,33 @@ eventQueue.process(config.worker.concurrency, async (job) => {
   // Execute automations post-commit (email, webhooks, etc.)
   await executeAutomationsForLead(job.data.leadId);
 });
+
+// ===============================
+// Dead Letter Queue (Failed Jobs)
+// ===============================
+const FailedJob = require("../api/models/FailedJob");
+
+eventQueue.on("failed", async (job, err) => {
+  console.error(
+    `Job ${job.id} failed after ${job.attemptsMade} attempts:`,
+    err.message,
+  );
+
+  // After max retries, save to dead letter queue
+  if (job.attemptsMade >= 3) {
+    try {
+      await FailedJob.create({
+        jobId: job.id.toString(),
+        jobData: job.data,
+        error: err.message,
+        errorStack: err.stack,
+        attempts: job.attemptsMade,
+        failedAt: new Date(),
+        queueName: "events",
+      });
+      console.log(`Job ${job.id} saved to dead letter queue`);
+    } catch (dlqErr) {
+      console.error("Failed to save job to dead letter queue:", dlqErr);
+    }
+  }
+});
