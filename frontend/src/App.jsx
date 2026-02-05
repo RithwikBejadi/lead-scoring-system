@@ -9,6 +9,7 @@ import { useState } from "react";
 import { ToastProvider } from "./context/ToastContext";
 import Leads from "./pages/Leads";
 import LeadDetail from "./pages/LeadDetail";
+import LeadActivity from "./pages/LeadActivity";
 import ScoringRules from "./pages/ScoringRules";
 import Leaderboard from "./pages/Leaderboard";
 import ManualEventDrawer from "./components/drawers/ManualEventDrawer";
@@ -41,6 +42,16 @@ function App() {
             element={
               <LeadDetail
                 onOpenDrawer={() => setIsEventDrawerOpen(true)}
+                isSidebarOpen={isSidebarOpen}
+                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                onCloseSidebar={() => setIsSidebarOpen(false)}
+              />
+            }
+          />
+          <Route
+            path="/leads/:id/activity"
+            element={
+              <LeadActivity
                 isSidebarOpen={isSidebarOpen}
                 onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
                 onCloseSidebar={() => setIsSidebarOpen(false)}

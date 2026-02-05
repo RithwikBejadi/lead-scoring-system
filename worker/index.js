@@ -2,13 +2,13 @@
  * FILE: worker/index.js
  * PURPOSE: Background worker for asynchronous event processing
  * PATTERN: Queue consumer - processes events from Redis queue
- * 
+ *
  * RESPONSIBILITIES:
  * - Consume events from queue
  * - Recalculate lead scores atomically
  * - Execute automation rules
  * - Ensure idempotency via transaction
- * 
+ *
  * RELATED:
  * - ../shared/queue (event source)
  * - workflows/processLeadWorkflow.js (business logic)
@@ -33,10 +33,11 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.get("/health", (req, res) => {
-  res.json({ 
-    status: "ok", 
+  res.json({
+    status: "ok",
     service: "worker",
-    mongodb: mongoose.connection.readyState === 1 ? "connected" : "disconnected"
+    mongodb:
+      mongoose.connection.readyState === 1 ? "connected" : "disconnected",
   });
 });
 
@@ -52,12 +53,12 @@ async function connectMongo() {
     try {
       await mongoose.connect(process.env.MONGO_URI, {
         serverSelectionTimeoutMS: 5000,
-        maxPoolSize: 10
+        maxPoolSize: 10,
       });
       break;
     } catch (err) {
       console.error("Mongo connect failed, retrying in 3s...", err.message);
-      await new Promise(r => setTimeout(r, 3000));
+      await new Promise((r) => setTimeout(r, 3000));
     }
   }
 }
@@ -71,7 +72,7 @@ connectMongo()
     console.log("Automation rules loaded");
     startRecoveryLoop();
   })
-  .catch(err => {
+  .catch((err) => {
     console.error("Worker startup failed", err);
     process.exit(1);
   });
@@ -79,18 +80,37 @@ connectMongo()
 // ===============================
 // Event Processing (ASYNC / WORKER)
 // ===============================
-eventQueue.process(config.worker.concurrency, async job => {
-  const session = await mongoose.startSession();
+eventQueue.process(config.worker.concurrency, async (job) => {
+  let session = null;
+
   try {
-    // Transaction ensures atomic score updates
-    await session.withTransaction(async () => {
-      await processLeadWorkflow(job.data.leadId, session);
-    }, { maxCommitTimeMS: config.worker.maxJobTime });
+    // Try to start session (works on replica sets, fails on standalone)
+    session = await mongoose.startSession();
+
+    // Transaction ensures atomic score updates (replica set only)
+    await session.withTransaction(
+      async () => {
+        await processLeadWorkflow(job.data.leadId, session);
+      },
+      { maxCommitTimeMS: config.worker.maxJobTime },
+    );
+  } catch (err) {
+    // If transactions not supported (standalone MongoDB), process without session
+    if (
+      err.message &&
+      err.message.includes("Transaction numbers are only allowed")
+    ) {
+      console.log("Running without transactions (standalone MongoDB)");
+      await processLeadWorkflow(job.data.leadId, null);
+    } else {
+      throw err; // Re-throw other errors
+    }
   } finally {
-    await session.endSession();
+    if (session) {
+      await session.endSession();
+    }
   }
 
   // Execute automations post-commit (email, webhooks, etc.)
   await executeAutomationsForLead(job.data.leadId);
 });
-

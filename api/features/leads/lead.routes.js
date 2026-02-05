@@ -54,7 +54,7 @@ async function exportLeads(req, res, next) {
     res.setHeader("Content-Type", "text/csv");
     res.setHeader(
       "Content-Disposition",
-      'attachment; filename="leads-export.csv"'
+      'attachment; filename="leads-export.csv"',
     );
     res.send(csvRows.join("\n"));
   } catch (err) {
@@ -91,6 +91,7 @@ router.get("/leaderboard", getLeaderboard);
 router.post("/", controller.createNewLead);
 router.get("/:id", controller.fetchLead);
 router.get("/:id/history", controller.fetchLeadHistory);
+router.get("/:id/timeline", controller.fetchLeadTimeline);
 router.get("/:id/intelligence", intelligenceController.getLeadIntelligence);
 
 module.exports = router;
