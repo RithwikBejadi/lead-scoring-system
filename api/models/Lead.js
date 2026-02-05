@@ -71,5 +71,6 @@ const LeadSchema = new mongoose.Schema(
 
 LeadSchema.index({ currentScore: -1 });
 LeadSchema.index({ projectId: 1, anonymousId: 1 }, { unique: true }); // Compound unique index
+LeadSchema.index({ projectId: 1, email: 1 }, { unique: true, sparse: true }); // Email-based identity
 
 module.exports = mongoose.model("Lead", LeadSchema);
