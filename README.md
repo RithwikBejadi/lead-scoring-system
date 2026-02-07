@@ -9,7 +9,7 @@ A production-grade, event-driven lead scoring system built with Node.js, MongoDB
 **Start here to understand the architecture:**
 
 1. **`api/app.js`** → Application bootstrap with system flow overview
-2. **`api/routes.js`** → Route registration  
+2. **`api/routes.js`** → Route registration
 3. **`api/features/leads/lead.routes.js`** → API entry points
 4. **`api/features/leads/intelligence.controller.js`** → Intelligence computation
 5. **`shared/queue/index.js`** → Async boundary (Redis queue)
@@ -25,7 +25,7 @@ A production-grade, event-driven lead scoring system built with Node.js, MongoDB
 ### Core Principles
 
 - **Event-Driven Architecture**: All lead mutations happen through events
-- **Async Processing**: Bull queue + Redis for reliable background jobs  
+- **Async Processing**: Bull queue + Redis for reliable background jobs
 - **Immutable Event Log**: Every action is tracked for full auditability
 - **Read/Write Separation**: Synchronous reads, asynchronous writes
 - **Deterministic Scoring**: Score derived from ordered event history
@@ -118,22 +118,22 @@ Result: Deterministic progression ✅
 
 Scoring rules are stored in MongoDB (not hardcoded):
 
-| Event Type | Points |
-|------------|--------|
-| page_view | 5 |
-| signup | 20 |
-| download | 10 |
-| demo_request | 50 |
-| contract_signed | 100 |
+| Event Type      | Points |
+| --------------- | ------ |
+| page_view       | 5      |
+| signup          | 20     |
+| download        | 10     |
+| demo_request    | 50     |
+| contract_signed | 100    |
 
 ### Stage Transitions
 
-| Score Range | Stage |
-|-------------|-------|
-| 0-19 | cold |
-| 20-49 | warm |
-| 50-99 | hot |
-| 100+ | qualified |
+| Score Range | Stage     |
+| ----------- | --------- |
+| 0-19        | cold      |
+| 20-49       | warm      |
+| 50-99       | hot       |
+| 100+        | qualified |
 
 ---
 
@@ -150,6 +150,7 @@ Automations trigger based on conditions:
 ```
 
 Examples:
+
 - Send email when lead becomes hot
 - Assign to sales rep when qualified
 - Slack notification on demo request
@@ -159,6 +160,7 @@ Examples:
 ## 🛠️ Tech Stack
 
 ### Backend
+
 - **Node.js** 20 + Express 5
 - **MongoDB** 6 (single-node, no replica set)
 - **Redis** 7 (queue persistence)
@@ -166,12 +168,14 @@ Examples:
 - **Mongoose** (ODM)
 
 ### Frontend
+
 - **React** 19 + Vite
 - **React Router** (navigation)
 - **Chart.js** (score visualization)
 - **Axios** (API client)
 
 ### DevOps
+
 - **Docker Compose** (orchestration)
 - **Health checks** (service dependencies)
 
@@ -200,12 +204,12 @@ npm run dev
 
 ### Services
 
-| Service | Port | URL |
-|---------|------|-----|
-| API | 4000 | http://localhost:4000 |
-| MongoDB | 27017 | mongodb://localhost:27017 |
-| Redis | 6379 | - |
-| Frontend | 5173 | http://localhost:5173 |
+| Service  | Port  | URL                       |
+| -------- | ----- | ------------------------- |
+| API      | 4000  | http://localhost:4000     |
+| MongoDB  | 27017 | mongodb://localhost:27017 |
+| Redis    | 6379  | -                         |
+| Frontend | 5173  | http://localhost:5173     |
 
 ---
 
@@ -363,43 +367,175 @@ curl -X POST http://localhost:4000/api/events \
 ## 🎓 Why This Architecture?
 
 ### Event Sourcing Benefits
+
 - **Full Audit Trail**: Every score change is traceable
 - **Time Travel**: Can rebuild lead state at any point
 - **Debugging**: Replay events to reproduce issues
 
 ### Queue Benefits
+
 - **Decoupling**: API remains fast regardless of processing time
 - **Reliability**: Events persist even if worker crashes
 - **Scalability**: Horizontal scaling (add more workers)
 
 ### Immutable History
+
 - Source of truth for all scoring
 - Enables recalculation with new rules
 - Compliance & transparency
 
 ---
 
-## 🛡️ Production Readiness
+## 🔐 Hardening & Safety Guarantees
 
-### Currently Implemented ✅
-- Idempotency (eventId deduplication)
-- Ordering (timestamp-based processing)
-- Locking (per-lead concurrency control)
-- Health checks (Docker dependencies)
-- Error handling (graceful failures)
-- Clean architecture (separation of concerns)
+### Input Validation
 
-### Production Checklist ⏳
-- [ ] Authentication & Authorization (JWT)
-- [ ] Rate limiting (Redis-based)
-- [ ] Input validation (Joi/Zod)
-- [ ] Structured logging (Winston/Pino)
-- [ ] Monitoring (Prometheus + Grafana)
-- [ ] Secrets management (Vault/AWS Secrets)
-- [ ] SSL/TLS
-- [ ] Database replication (if using replica sets)
-- [ ] Horizontal worker scaling
-- [ ] Dead letter queue for failed jobs
+**Zod schemas on all ingestion endpoints:**
+
+- Strict type checking with runtime validation
+- Maximum payload size: 5KB for properties
+- Event type validation: alphanumeric + underscores only
+- Property depth limited to 2 levels
+- Returns `400 Bad Request` with specific error messages
+
+**Malformed data protection:**
+
+```javascript
+// Rejected automatically
+{
+  "event": "invalid-chars!@#",  // ❌ Invalid characters
+  "properties": { ... }          // ❌ Too large (>5KB)
+}
+// Response: 400 with detailed error
+```
+
+### Rate Limiting
+
+**Redis-backed distributed rate limiting:**
+
+- **Limit:** 100 events per minute per API key
+- **Storage:** Redis with automatic TTL expiration
+- **Response:** `429 Too Many Requests` when exceeded
+- **Algorithm:** Token bucket (allows burst traffic)
+
+**Prevents abuse:**
+
+```javascript
+// First 100 requests: 202 Accepted
+// Request 101+: 429 Rate Limit Exceeded
+```
+
+### SDK Safety
+
+**Silent failures - never crashes host websites:**
+
+- All network calls wrapped in try/catch
+- `localStorage` failures handled gracefully
+- No console errors in production
+- Uses `navigator.sendBeacon` (reliable) with `fetch` fallback
+
+**Degrades gracefully:**
+
+```javascript
+// Network offline → events dropped silently
+// Backend 500 error → SDK continues tracking
+// Invalid API key → logged, no crash
+```
+
+### Worker Crash Immunity
+
+**Per-lead locking prevents race conditions:**
+
+```javascript
+// Atomic lock acquisition
+const lead = await Lead.findOneAndUpdate(
+  { _id: leadId, processing: false },
+  { $set: { processing: true } },
+);
+```
+
+**All errors logged, none crash worker:**
+
+- Identity resolution wrapped in try/catch
+- Scoring continues even if identity fails
+- Lead always unlocked in finally block
+- Worker stays healthy, job completes gracefully
+
+### Idempotency
+
+**Duplicate events safely ignored:**
+
+- Unique index on `ScoreHistory(leadId, eventId)`
+- Duplicate inserts return unique constraint error
+- Error caught and ignored (expected behavior)
+- Safe to retry failed jobs
+
+**Example:**
+
+```javascript
+// First process: saves score delta
+// Retry (if worker crashed): duplicate key error ignored
+// Result: Event scored exactly once ✅
+```
+
+### Identity Safety
+
+**Transaction-based merge operations:**
+
+- All updates in MongoDB transaction (atomic)
+- Events moved from anonymous → known lead
+- Score history moved atomically
+- No data loss during merge
+- Idempotent (safe to run multiple times)
+
+### Production Readiness Checklist ✅
+
+- [x] Input validation (Zod schemas)
+- [x] Rate limiting (Redis-backed, 100/min per key)
+- [x] SDK crash immunity (silent failures)
+- [x] Worker crash immunity (comprehensive error handling)
+- [x] Idempotency (eventId deduplication, unique indexes)
+- [x] Dead letter queue (failed jobs preserved)
+- [x] Ordering guarantees (timestamp-based processing)
+- [x] Locking (per-lead concurrency control)
+- [x] Health checks (Docker dependencies)
+- [x] Multi-tenant isolation (projectId separation)
+- [x] Session tracking (complete user journeys)
+- [x] Identity resolution (anonymous → known merging)
+
+---
+
+## 🛡️ Security Features
+
+### API Key Authentication
+
+Every ingestion request requires valid API key:
+
+```javascript
+POST /api/ingest/event
+{
+  "apiKey": "pk_...",  // Required - validated against DB
+  ...
+}
+```
+
+### Project Isolation
+
+**Multi-tenant architecture:**
+
+- Each project has unique API key
+- Leads/events scoped to `projectId`
+- No cross-project data access
+- Compound indexes ensure isolation
+
+### Privacy-Safe Tracking
+
+**SDK never sends sensitive data:**
+
+- Form submissions: field **names** only (no values)
+- Passwords/credit cards: never captured
+- Properties sanitized before storage
+- User can inspect all sent data in DevTools
 
 ---
 

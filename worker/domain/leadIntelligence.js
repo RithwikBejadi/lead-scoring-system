@@ -5,7 +5,9 @@ function calculateVelocity(eventsLast24h) {
 }
 
 function calculateRisk(lastEventAt) {
-  const daysSinceLastEvent = Math.floor((Date.now() - lastEventAt.getTime()) / (1000 * 60 * 60 * 24));
+  const daysSinceLastEvent = Math.floor(
+    (Date.now() - lastEventAt.getTime()) / (1000 * 60 * 60 * 24),
+  );
   if (daysSinceLastEvent > 14) return "high";
   if (daysSinceLastEvent > 7) return "medium";
   return "low";
@@ -28,4 +30,9 @@ function computeIntelligence(lead) {
   return { stage, velocity, risk, nextAction };
 }
 
-module.exports = { calculateVelocity, calculateRisk, getNextAction, computeIntelligence };
+module.exports = {
+  calculateVelocity,
+  calculateRisk,
+  getNextAction,
+  computeIntelligence,
+};

@@ -10,7 +10,7 @@ async function processLeadEvents(leadId, session) {
   const lead = await Lead.findOneAndUpdate(
     { _id: leadId, processing: false },
     { $set: { processing: true } },
-    { new: true, session }
+    { new: true, session },
   );
   if (!lead) return;
 
@@ -25,16 +25,26 @@ async function processLeadEvents(leadId, session) {
       leadId,
       processed: false,
       queued: true,
-      processing: false
-    }).sort({ timestamp: 1 }).session(session);
+      processing: false,
+    })
+      .sort({ timestamp: 1 })
+      .session(session);
 
     if (!events.length) {
-      await Lead.updateOne({ _id: leadId }, { $set: { processing: false } }, { session });
+      await Lead.updateOne(
+        { _id: leadId },
+        { $set: { processing: false } },
+        { session },
+      );
       return;
     }
 
-    const ids = events.map(e => e._id);
-    await Event.updateMany({ _id: { $in: ids } }, { $set: { processing: true } }, { session });
+    const ids = events.map((e) => e._id);
+    await Event.updateMany(
+      { _id: { $in: ids } },
+      { $set: { processing: true } },
+      { session },
+    );
 
     const history = [];
 
@@ -46,7 +56,7 @@ async function processLeadEvents(leadId, session) {
         oldScore: score,
         newScore: score + delta,
         delta,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
       score += delta;
     }
@@ -54,7 +64,7 @@ async function processLeadEvents(leadId, session) {
     try {
       await ScoreHistory.insertMany(history, { session, ordered: false });
     } catch (err) {
-      if (!(err && (err.code === 11000 || (err.name === 'BulkWriteError')))) {
+      if (!(err && (err.code === 11000 || err.name === "BulkWriteError"))) {
         throw err;
       }
       logger.debug("Ignored duplicate-key during insertMany for ScoreHistory");
@@ -63,7 +73,7 @@ async function processLeadEvents(leadId, session) {
     await Event.updateMany(
       { _id: { $in: ids } },
       { $set: { processed: true, queued: false, processing: false } },
-      { session }
+      { session },
     );
 
     // Calculate velocity (events in last 24h)
@@ -71,7 +81,7 @@ async function processLeadEvents(leadId, session) {
     const recentEvents = await Event.countDocuments({
       leadId,
       timestamp: { $gte: oneDayAgo },
-      processed: true
+      processed: true,
     }).session(session);
 
     const velocityScore = calculateVelocity(recentEvents);
@@ -79,25 +89,31 @@ async function processLeadEvents(leadId, session) {
 
     await Lead.updateOne(
       { _id: leadId },
-      { 
-        $set: { 
+      {
+        $set: {
           currentScore: score,
           leadStage,
           velocityScore,
           eventsLast24h: recentEvents,
           lastEventAt: new Date(),
-          processing: false 
-        } 
+          processing: false,
+        },
       },
-      { session }
+      { session },
     );
 
     // Check automation rules
     await checkAutomationRules(leadId, leadStage, velocityScore, session);
-
   } catch (err) {
-    await Lead.updateOne({ _id: leadId }, { $set: { processing: false } }, { session }).catch(e => {
-      logger.error("Failed to unlock lead after error", { leadId, e: e.message });
+    await Lead.updateOne(
+      { _id: leadId },
+      { $set: { processing: false } },
+      { session },
+    ).catch((e) => {
+      logger.error("Failed to unlock lead after error", {
+        leadId,
+        e: e.message,
+      });
     });
     throw err;
   }
@@ -107,7 +123,7 @@ async function checkAutomationRules(leadId, leadStage, velocityScore, session) {
   const rules = await AutomationRule.find({
     whenStage: leadStage,
     active: true,
-    minVelocity: { $lte: velocityScore }
+    minVelocity: { $lte: velocityScore },
   }).session(session);
 
   for (const rule of rules) {
@@ -116,7 +132,7 @@ async function checkAutomationRules(leadId, leadStage, velocityScore, session) {
       rule: rule.name,
       action: rule.action,
       stage: leadStage,
-      velocity: velocityScore
+      velocity: velocityScore,
     });
     // TODO: Implement actual automation actions (webhook, email, CRM integration)
   }
