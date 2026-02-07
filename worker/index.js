@@ -1,20 +1,3 @@
-/**
- * FILE: worker/index.js
- * PURPOSE: Background worker for asynchronous event processing
- * PATTERN: Queue consumer - processes events from Redis queue
- *
- * RESPONSIBILITIES:
- * - Consume events from queue
- * - Recalculate lead scores atomically
- * - Execute automation rules
- * - Ensure idempotency via transaction
- *
- * RELATED:
- * - ../shared/queue (event source)
- * - workflows/processLeadWorkflow.js (business logic)
- * - domain/automationEngine.js (automation triggers)
- */
-
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
@@ -26,9 +9,6 @@ const { waitForRules } = require("./services/scoringRulesCache");
 const { initAutomationRules } = require("./domain/automationEngine");
 const config = require("./config");
 
-// ===============================
-// Health Endpoint (for Render)
-// ===============================
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -45,9 +25,6 @@ app.listen(PORT, () => {
   console.log(`Worker health endpoint listening on port ${PORT}`);
 });
 
-// ===============================
-// MongoDB Connection with Retry
-// ===============================
 async function connectMongo() {
   while (true) {
     try {
@@ -77,17 +54,12 @@ connectMongo()
     process.exit(1);
   });
 
-// ===============================
-// Event Processing (ASYNC / WORKER)
-// ===============================
 eventQueue.process(config.worker.concurrency, async (job) => {
   let session = null;
 
   try {
-    // Try to start session (works on replica sets, fails on standalone)
     session = await mongoose.startSession();
 
-    // Transaction ensures atomic score updates (replica set only)
     await session.withTransaction(
       async () => {
         await processLeadWorkflow(job.data.leadId, session);
@@ -95,7 +67,6 @@ eventQueue.process(config.worker.concurrency, async (job) => {
       { maxCommitTimeMS: config.worker.maxJobTime },
     );
   } catch (err) {
-    // If transactions not supported (standalone MongoDB), process without session
     if (
       err.message &&
       err.message.includes("Transaction numbers are only allowed")
@@ -103,7 +74,7 @@ eventQueue.process(config.worker.concurrency, async (job) => {
       console.log("Running without transactions (standalone MongoDB)");
       await processLeadWorkflow(job.data.leadId, null);
     } else {
-      throw err; // Re-throw other errors
+      throw err;
     }
   } finally {
     if (session) {
@@ -111,13 +82,9 @@ eventQueue.process(config.worker.concurrency, async (job) => {
     }
   }
 
-  // Execute automations post-commit (email, webhooks, etc.)
   await executeAutomationsForLead(job.data.leadId);
 });
 
-// ===============================
-// Dead Letter Queue (Failed Jobs)
-// ===============================
 const FailedJob = require("../api/models/FailedJob");
 
 eventQueue.on("failed", async (job, err) => {
@@ -126,7 +93,6 @@ eventQueue.on("failed", async (job, err) => {
     err.message,
   );
 
-  // After max retries, save to dead letter queue
   if (job.attemptsMade >= 3) {
     try {
       await FailedJob.create({

@@ -8,14 +8,16 @@ let cacheReady = false;
 async function initAutomationRules() {
   rulesCache = await AutomationRule.find().lean();
   cacheReady = true;
-  logger.info("Automation rules cache initialized", { count: rulesCache.length });
+  logger.info("Automation rules cache initialized", {
+    count: rulesCache.length,
+  });
 }
 
 async function executeAutomations(lead, stage, velocity) {
   if (!cacheReady) return;
 
   const dateBucket = new Date().toISOString().split("T")[0];
-  const matchingRules = rulesCache.filter(rule => {
+  const matchingRules = rulesCache.filter((rule) => {
     if (rule.whenStage && rule.whenStage !== stage) return false;
     if (rule.minVelocity && velocity < rule.minVelocity) return false;
     return true;
@@ -32,20 +34,23 @@ async function executeAutomations(lead, stage, velocity) {
           stage,
           velocity,
           leadEmail: lead.email,
-          leadName: lead.name
+          leadName: lead.name,
         },
-        status: "executed"
+        status: "executed",
       });
 
       logger.info("Automation triggered", {
         leadId: lead._id,
         action: rule.action,
         stage,
-        velocity
+        velocity,
       });
     } catch (err) {
       if (err.code === 11000) {
-        logger.debug("Automation already executed today", { leadId: lead._id, ruleId: rule._id });
+        logger.debug("Automation already executed today", {
+          leadId: lead._id,
+          ruleId: rule._id,
+        });
       } else {
         logger.error("Failed to execute automation", { error: err.message });
       }
@@ -72,4 +77,8 @@ async function executeAutomationsForLead(leadId) {
   await executeAutomations(lead, stage, velocity);
 }
 
-module.exports = { initAutomationRules, executeAutomations, executeAutomationsForLead };
+module.exports = {
+  initAutomationRules,
+  executeAutomations,
+  executeAutomationsForLead,
+};
