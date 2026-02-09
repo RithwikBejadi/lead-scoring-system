@@ -85,7 +85,7 @@ eventQueue.process(config.worker.concurrency, async (job) => {
   await executeAutomationsForLead(job.data.leadId);
 });
 
-const FailedJob = require("../api/models/FailedJob");
+const FailedJob = require("./models/FailedJob");
 
 eventQueue.on("failed", async (job, err) => {
   console.error(

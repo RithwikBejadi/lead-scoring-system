@@ -18,8 +18,7 @@ const ingestRateLimiter = rateLimit({
 
   // Use Redis for distributed rate limiting
   store: new RedisStore({
-    // @ts-expect-error - Known issue with the library's types
-    client: redisClient,
+    sendCommand: (...args) => redisClient.sendCommand(args),
     prefix: "rl:ingest:",
   }),
 

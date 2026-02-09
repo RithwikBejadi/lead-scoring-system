@@ -7,9 +7,11 @@ const api = axios.create({
 });
 
 export const leaderboardApi = {
-  // Get top leads
-  getTopLeads: async (limit = 10) => {
-    const response = await api.get('/leads/leaderboard', { params: { limit } });
+  // Get top leads from leaderboard
+  getTopLeads: async (limit = 10, offset = 0) => {
+    const response = await api.get('/leaderboard', { 
+      params: { limit, offset } 
+    });
     return response.data;
   }
 };

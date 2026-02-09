@@ -7,6 +7,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useState } from "react";
 import { ToastProvider } from "./context/ToastContext";
+import Dashboard from "./pages/Dashboard";
 import Leads from "./pages/Leads";
 import LeadDetail from "./pages/LeadDetail";
 import LeadActivity from "./pages/LeadActivity";
@@ -24,7 +25,17 @@ function App() {
     <ToastProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to="/leads" replace />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route
+            path="/dashboard"
+            element={
+              <Dashboard
+                isSidebarOpen={isSidebarOpen}
+                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                onCloseSidebar={() => setIsSidebarOpen(false)}
+              />
+            }
+          />
           <Route
             path="/leads"
             element={

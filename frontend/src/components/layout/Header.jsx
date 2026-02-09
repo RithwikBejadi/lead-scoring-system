@@ -34,55 +34,37 @@ function Header({ title, subtitle, actions, onToggleSidebar }) {
   const crumbs = defaultBreadcrumbs();
 
   return (
-    <header className="h-auto bg-white border-b border-slate-200 px-4 md:px-6 py-5 shrink-0 z-10">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div className="flex items-center gap-4">
-          {/* Hamburger Menu - Mobile Only */}
-          <button
-            onClick={onToggleSidebar}
-            className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <span className="material-symbols-outlined">menu</span>
-          </button>
-
-          <div className="flex-1">
-            {/* Breadcrumbs */}
-            <div className="flex items-center gap-2 text-sm mb-2">
-              {crumbs.map((crumb, idx) => (
-                <span key={idx} className="flex items-center gap-2">
-                  <span
-                    className={
-                      crumb.isLast
-                        ? "text-slate-800 font-semibold"
-                        : "text-slate-500 font-medium"
-                    }
-                  >
-                    {crumb.label}
-                  </span>
-                  {idx < crumbs.length - 1 && (
-                    <span className="text-slate-300">/</span>
-                  )}
-                </span>
-              ))}
-            </div>
-
-            {/* Title */}
-            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
-              {title}
-            </h2>
-            {subtitle &&
-              (typeof subtitle === "string" ? (
-                <p className="text-slate-500 text-sm mt-1">{subtitle}</p>
-              ) : (
-                <div className="mt-1">{subtitle}</div>
-              ))}
+    <header className="h-16 border-b border-black flex items-center justify-between px-8 flex-shrink-0 z-10 bg-white">
+      <div className="flex items-center gap-2 text-sm">
+        <button
+          onClick={onToggleSidebar}
+          className="lg:hidden p-2 text-black hover:bg-gray-100 transition-colors mr-2"
+        >
+          <span className="material-symbols-outlined">menu</span>
+        </button>
+        <span className="text-black">Workspace</span>
+        <span className="material-symbols-outlined text-[14px] text-black">chevron_right</span>
+        <span className="font-medium text-black">{title || crumbs[crumbs.length - 1]?.label || 'Overview'}</span>
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="relative group hidden md:block">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-black text-[18px] group-focus-within:text-black transition-colors">search</span>
+          <input
+            className="h-9 w-64 pl-10 pr-4 text-sm bg-white border border-black focus:border-black focus:ring-1 focus:ring-black placeholder:text-gray-500 outline-none transition-all"
+            placeholder="Search leads, companies..."
+            type="text"
+          />
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            <span className="text-[10px] font-mono border border-black px-1 text-black">⌘K</span>
           </div>
         </div>
-
-        {/* Right Actions - only custom actions passed as props */}
-        {actions && (
-          <div className="flex items-center gap-3 flex-wrap">{actions}</div>
-        )}
+        <button className="w-9 h-9 flex items-center justify-center border border-transparent hover:border-black hover:bg-gray-100 transition-colors text-black">
+          <span className="material-symbols-outlined text-[20px]">notifications</span>
+        </button>
+        <button className="w-9 h-9 flex items-center justify-center border border-transparent hover:border-black hover:bg-gray-100 transition-colors text-black">
+          <span className="material-symbols-outlined text-[20px]">help</span>
+        </button>
+        {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>
     </header>
   );

@@ -5,15 +5,16 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: "#2c5181",
-        "primary-dark": "#1e3a5f",
-        "background-light": "#f6f7f8",
-        "background-dark": "#14181e",
+        primary: "#000000",
+        "primary-dark": "#000000",
+        "background-light": "#ffffff",
+        "background-dark": "#0a0a0a",
         "surface-light": "#ffffff",
         "surface-dark": "#1e2329",
       },
       fontFamily: {
-        display: ["Manrope", "sans-serif"],
+        display: ["Inter", "sans-serif"],
+        mono: ["JetBrains Mono", "monospace"],
       },
       borderRadius: {
         DEFAULT: "0.25rem",
