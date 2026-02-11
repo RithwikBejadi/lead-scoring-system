@@ -21,7 +21,10 @@
     return;
   }
 
-  const API_ENDPOINT = "http://localhost:4000/api/ingest/event";
+  // Phase 5.2: Dynamic API Endpoint extraction
+  // Uses the origin of the script itself (e.g., https://api.yourdomain.com)
+  const scriptUrl = new URL(script.src);
+  const API_ENDPOINT = `${scriptUrl.origin}/api/ingest/event`;
   const STORAGE_KEY = "ls_anonymous_id";
 
   // State

@@ -55,6 +55,9 @@ connectMongo()
   });
 
 eventQueue.process(config.worker.concurrency, async (job) => {
+  const start = Date.now();
+  console.log(`[Job:${job.id}] STARTED processing lead:${job.data.leadId}`);
+
   let session = null;
 
   try {
@@ -66,14 +69,22 @@ eventQueue.process(config.worker.concurrency, async (job) => {
       },
       { maxCommitTimeMS: config.worker.maxJobTime },
     );
+
+    console.log(`[Job:${job.id}] COMPLETED in ${Date.now() - start}ms`);
   } catch (err) {
     if (
       err.message &&
       err.message.includes("Transaction numbers are only allowed")
     ) {
-      console.log("Running without transactions (standalone MongoDB)");
+      console.warn(
+        `[Job:${job.id}] WARN: Running without transactions (standalone MongoDB)`,
+      );
       await processLeadWorkflow(job.data.leadId, null);
+      console.log(
+        `[Job:${job.id}] COMPLETED (No Tx) in ${Date.now() - start}ms`,
+      );
     } else {
+      console.error(`[Job:${job.id}] FAILED: ${err.message}`);
       throw err;
     }
   } finally {
@@ -89,8 +100,7 @@ const FailedJob = require("./models/FailedJob");
 
 eventQueue.on("failed", async (job, err) => {
   console.error(
-    `Job ${job.id} failed after ${job.attemptsMade} attempts:`,
-    err.message,
+    `[Job:${job.id}] FAILED FINAL (Attempts: ${job.attemptsMade}): ${err.message}`,
   );
 
   if (job.attemptsMade >= 3) {
@@ -104,9 +114,9 @@ eventQueue.on("failed", async (job, err) => {
         failedAt: new Date(),
         queueName: "events",
       });
-      console.log(`Job ${job.id} saved to dead letter queue`);
+      console.log(`[Job:${job.id}] SAVED to Dead Letter Queue (failed_jobs)`);
     } catch (dlqErr) {
-      console.error("Failed to save job to dead letter queue:", dlqErr);
+      console.error(`[Job:${job.id}] CRITICAL: Failed to save to DLQ:`, dlqErr);
     }
   }
 });

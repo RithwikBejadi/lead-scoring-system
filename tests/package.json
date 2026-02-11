@@ -1,0 +1,20 @@
+{
+  "name": "lead-scoring-tests",
+  "version": "1.0.0",
+  "description": "Testing and verification scripts",
+  "scripts": {
+    "load-test": "node load-test.js --events=10000 --concurrent=100",
+    "chaos-test": "node chaos-test.js",
+    "metrics": "node metrics-collector.js --duration=60",
+    "test:light": "node load-test.js --events=1000 --concurrent=50",
+    "test:stress": "node load-test.js --events=50000 --concurrent=200",
+    "test:breaking": "node load-test.js --events=100000 --concurrent=300"
+  },
+  "dependencies": {
+    "axios": "^1.13.2",
+    "bull": "^4.16.5",
+    "dotenv": "^17.2.3",
+    "ioredis": "^5.9.1",
+    "mongoose": "^9.1.3"
+  }
+}

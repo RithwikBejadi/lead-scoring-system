@@ -54,19 +54,33 @@ function validatePayload(payload) {
  * 5. Return 202 immediately
  */
 async function ingestEvent(payload) {
+  const start = Date.now();
   // Step 1: Validate payload
-  validatePayload(payload);
+  try {
+    validatePayload(payload);
+  } catch (err) {
+    console.warn(`[API] Validation Failed: ${err.message}`);
+    throw err;
+  }
 
   const { apiKey, event, anonymousId, properties = {}, sessionId } = payload;
 
   // Step 2: Validate API key and get project
-  const project = await Project.findOne({ apiKey });
+  let project;
+  try {
+    project = await Project.findOne({ apiKey });
+  } catch (dbErr) {
+    console.error(`[API] MongoDB Error during auth: ${dbErr.message}`);
+    throw dbErr;
+  }
 
   if (!project) {
+    console.warn(`[API] Auth Failed - Invalid API Key: ${apiKey}`);
     throw new UnauthorizedError("Invalid API key");
   }
 
   if (!project.active) {
+    console.warn(`[API] Auth Failed - Project Inactive: ${apiKey}`);
     throw new UnauthorizedError("Project is not active");
   }
 
@@ -115,23 +129,37 @@ async function ingestEvent(payload) {
   } catch (err) {
     // Duplicate event - idempotency, silently return
     if (err.code === 11000) {
+      console.warn(`[API] Idempotency Skip - Duplicate Event ID: ${eventId}`);
       return { status: "duplicate", eventId };
     }
+    console.error(`[API] MongoDB Error during event creation: ${err.message}`);
     throw err;
   }
 
   // Step 5: Queue for processing
-  await queue.add(
-    { leadId: lead._id.toString() },
-    {
-      jobId: `lead-${lead._id}`,
-      removeOnComplete: true,
-      attempts: 5,
-    },
-  );
+  try {
+    await queue.add(
+      { leadId: lead._id.toString() },
+      {
+        jobId: `lead-${lead._id}`,
+        removeOnComplete: true,
+        attempts: 5,
+      },
+    );
+  } catch (queueErr) {
+    console.error(`[API] Redis/Queue Error: ${queueErr.message}`);
+    // Even if queue fails, we saved the event.
+    // We might want to return 500 or 202 with warning.
+    // For now, rethrow to indicate internal failure to client (or handle gracefully)
+    throw queueErr;
+  }
 
   // Step 6: Mark as queued
   await Event.updateOne({ eventId }, { $set: { queued: true } });
+
+  console.log(
+    `[API] Ingest Success - Event:${event} Lead:${lead._id} in ${Date.now() - start}ms`,
+  );
 
   // Step 7: Return immediately (202 Accepted)
   return { status: "queued" };

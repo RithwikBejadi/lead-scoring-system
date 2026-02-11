@@ -29,6 +29,10 @@ const ingestRateLimiter = rateLimit({
 
   // Custom response for rate limit exceeded
   handler: (req, res) => {
+    const apiKey = req.body?.apiKey || "unknown";
+    const ip = req.ip;
+    console.warn(`[API] Rate Limit Exceeded for key:${apiKey} ip:${ip}`);
+
     res.status(429).json({
       error: "Rate limit exceeded",
       message: "Too many events. Please slow down.",

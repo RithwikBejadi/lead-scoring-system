@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
-import { api } from '../api';
+import { useState, useEffect } from "react";
+import { api } from "../api";
 
 export default function CreateEvent() {
   const [leads, setLeads] = useState([]);
   const [formData, setFormData] = useState({
-    eventType: 'page_view',
-    leadId: '',
-    email: '',
-    name: '',
-    company: ''
+    eventType: "page_view",
+    leadId: "",
+    email: "",
+    name: "",
+    company: "",
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
@@ -38,87 +38,120 @@ export default function CreateEvent() {
         const leadRes = await api.createLead({
           name: formData.name,
           email: formData.email,
-          company: formData.company
+          company: formData.company,
         });
         formData.leadId = leadRes.data._id;
       }
 
       await api.createEvent({
         eventType: formData.eventType,
-        leadId: formData.leadId
+        leadId: formData.leadId,
       });
 
-      setMessage({ type: 'success', text: 'Event created! Processing asynchronously...' });
-      setFormData({ ...formData, eventType: 'page_view' });
+      setMessage({
+        type: "success",
+        text: "Event created! Processing asynchronously...",
+      });
+      setFormData({ ...formData, eventType: "page_view" });
       loadLeads();
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.error || err.message });
+      setMessage({
+        type: "error",
+        text: err.response?.data?.error || err.message,
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="card">
-      <h2>Fire Event</h2>
-      
+    <div className="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">Fire Event</h2>
+
       {message && (
-        <div className={message.type === 'error' ? 'error' : 'badge badge-qualified'} style={{padding: '1rem', marginBottom: '1rem'}}>
+        <div
+          className={`p-4 rounded-lg mb-6 ${
+            message.type === "error"
+              ? "bg-red-50 text-red-700 border border-red-100"
+              : "bg-green-50 text-green-700 border border-green-100"
+          }`}
+        >
           {message.text}
         </div>
       )}
 
-      <div style={{marginBottom: '1rem'}}>
-        <label>
-          <input 
-            type="checkbox" 
+      <div className="mb-6">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
             checked={createLead}
             onChange={(e) => setCreateLead(e.target.checked)}
+            className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
           />
-          {' '}Create new lead
+          <span className="text-gray-700 font-medium">Create new lead</span>
         </label>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="space-y-6">
         {createLead ? (
           <>
-            <div className="form-group">
-              <label>Name *</label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Name *
+              </label>
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               />
             </div>
-            <div className="form-group">
-              <label>Email *</label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email *
+              </label>
               <input
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
                 required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               />
             </div>
-            <div className="form-group">
-              <label>Company</label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Company
+              </label>
               <input
                 type="text"
                 value={formData.company}
-                onChange={(e) => setFormData({...formData, company: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, company: e.target.value })
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               />
             </div>
           </>
         ) : (
-          <div className="form-group">
-            <label>Select Lead *</label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Lead *
+            </label>
             <select
               value={formData.leadId}
-              onChange={(e) => setFormData({...formData, leadId: e.target.value})}
+              onChange={(e) =>
+                setFormData({ ...formData, leadId: e.target.value })
+              }
               required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
             >
               <option value="">Choose a lead...</option>
-              {leads.map(lead => (
+              {leads.map((lead) => (
                 <option key={lead._id} value={lead._id}>
                   {lead.name} ({lead.email})
                 </option>
@@ -127,12 +160,17 @@ export default function CreateEvent() {
           </div>
         )}
 
-        <div className="form-group">
-          <label>Event Type *</label>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Event Type *
+          </label>
           <select
             value={formData.eventType}
-            onChange={(e) => setFormData({...formData, eventType: e.target.value})}
+            onChange={(e) =>
+              setFormData({ ...formData, eventType: e.target.value })
+            }
             required
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
           >
             <option value="page_view">Page View (+5)</option>
             <option value="signup">Signup (+20)</option>
@@ -142,8 +180,12 @@ export default function CreateEvent() {
           </select>
         </div>
 
-        <button type="submit" className="btn btn-success" disabled={loading}>
-          {loading ? 'Processing...' : 'Fire Event'}
+        <button
+          type="submit"
+          className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={loading}
+        >
+          {loading ? "Processing..." : "Fire Event"}
         </button>
       </form>
     </div>

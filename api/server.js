@@ -19,7 +19,14 @@ async function startServer() {
 
     server.listen(PORT, () => {
       console.log(`API server running on port ${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+
+      // Phase 2.1: NODE_ENV Enforcement
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("⚠️  Running in non-production mode");
+      } else {
+        console.log("✅ Running in production mode");
+      }
+
       console.log(`Socket.IO enabled on port ${PORT}`);
     });
 
