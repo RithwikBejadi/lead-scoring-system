@@ -5,7 +5,7 @@
  */
 
 const rateLimit = require("express-rate-limit");
-const { RedisStore } = require("rate-limit-redis");
+const { RedisStore, ipKeyGenerator } = require("rate-limit-redis");
 const redisClient = require("../config/redis");
 
 /**
@@ -18,13 +18,13 @@ const ingestRateLimiter = rateLimit({
 
   // Use Redis for distributed rate limiting
   store: new RedisStore({
-    sendCommand: (...args) => redisClient.sendCommand(args),
+    sendCommand: async (...args) => redisClient.call(...args),
     prefix: "rl:ingest:",
   }),
 
   // Key by API key from request body
   keyGenerator: (req) => {
-    return req.body?.apiKey || req.ip;
+    return req.body?.apiKey || ipKeyGenerator(req);
   },
 
   // Custom response for rate limit exceeded

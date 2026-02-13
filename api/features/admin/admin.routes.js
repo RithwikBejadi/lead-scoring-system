@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../../middleware/authMiddleware');
+const { protect, adminOnly } = require('../../middleware/authMiddleware');
 const {
   rebuildLead,
   rebuildProject,
@@ -10,7 +10,8 @@ const {
 } = require('./admin.controller');
 
 // All admin routes require authentication
-router.use(authenticate);
+router.use(protect);
+router.use(adminOnly);
 
 // Rebuild operations
 router.post('/rebuild/:leadId', rebuildLead);

@@ -5,6 +5,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import "./Login.css";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -49,7 +50,6 @@ function Login() {
     setIsSubmitting(false);
   };
 
-  // Styles from Landing.jsx adapted for Login
   const styles = {
     page: {
       fontFamily:
@@ -78,9 +78,6 @@ function Login() {
       alignItems: "center",
       padding: "80px",
       borderLeft: "1px solid #e5e7eb",
-      "@media (max-width: 1024px)": {
-        display: "none",
-      },
     },
     logo: {
       display: "flex",
@@ -370,9 +367,7 @@ function Login() {
               L
             </div>
             <h2 style={styles.quote}>
-              "LeadScore has completely transformed how our sales team
-              prioritizes their day. We've seen a 40% increase in conversion
-              rates."
+              "Transform your company, use the Lead Scoring engine provided by LeadScout to analyze outcomes"
             </h2>
             <div style={styles.author}>
               <div style={styles.authorInfo}>

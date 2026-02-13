@@ -30,6 +30,7 @@ const userSchema = new mongoose.Schema(
     },
     googleId: {
       type: String,
+      unique: true,
       sparse: true,
     },
     avatar: {
@@ -60,7 +61,6 @@ const userSchema = new mongoose.Schema(
 );
 
 // Index for faster lookups
-userSchema.index({ googleId: 1 });
 userSchema.index({ verificationToken: 1 });
 
 module.exports = mongoose.model("User", userSchema);

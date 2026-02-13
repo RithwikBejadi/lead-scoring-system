@@ -17,6 +17,7 @@ import Register from "./pages/Register";
 
 // Protected pages
 import Dashboard from "./pages/Dashboard";
+import DashboardModern from "./pages/DashboardModern";
 import Leads from "./pages/Leads";
 import LeadDetail from "./pages/LeadDetail";
 import LeadActivity from "./pages/LeadActivity";
@@ -35,7 +36,12 @@ function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <BrowserRouter>
+        <BrowserRouter
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<Landing />} />
@@ -52,6 +58,14 @@ function App() {
                     onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
                     onCloseSidebar={() => setIsSidebarOpen(false)}
                   />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard-modern"
+              element={
+                <ProtectedRoute>
+                  <DashboardModern />
                 </ProtectedRoute>
               }
             />

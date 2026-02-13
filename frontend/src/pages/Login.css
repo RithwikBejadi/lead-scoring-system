@@ -1,0 +1,6 @@
+/* Login page responsive styles */
+@media (max-width: 1024px) {
+  .login-right-panel {
+    display: none !important;
+  }
+}
