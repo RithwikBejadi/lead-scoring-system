@@ -135,10 +135,35 @@ const getMe = async (req, res) => {
   }
 };
 
+const getMyProject = async (req, res) => {
+  try {
+    const Project = require("../projects/project.model");
+    const project = await Project.findById(req.user.projectId);
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        error: "Project not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: { project },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
   googleAuth,
   verifyEmail,
   getMe,
+  getMyProject,
 };

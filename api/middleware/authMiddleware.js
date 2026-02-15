@@ -36,6 +36,7 @@ const protect = (req, res, next) => {
     req.user = {
       userId: decoded.userId,
       email: decoded.email,
+      projectId: decoded.projectId,
     };
 
     next();
@@ -62,6 +63,7 @@ const optionalAuth = (req, res, next) => {
         req.user = {
           userId: decoded.userId,
           email: decoded.email,
+          projectId: decoded.projectId,
         };
       }
     }

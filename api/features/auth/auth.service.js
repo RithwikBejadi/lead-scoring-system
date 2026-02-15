@@ -3,6 +3,8 @@ const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
 const crypto = require("crypto");
 const User = require("../../models/User");
+const Project = require("../projects/project.model");
+const { generateApiKey } = require("../../utils/generateApiKey");
 
 // Google OAuth client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -25,9 +27,9 @@ const comparePassword = async (password, hash) => {
 /**
  * Generate JWT token
  */
-const generateToken = (userId, email) => {
+const generateToken = (userId, email, projectId) => {
   return jwt.sign(
-    { userId, email },
+    { userId, email, projectId },
     process.env.JWT_SECRET || "your-secret-key-change-in-production",
     { expiresIn: process.env.JWT_EXPIRES_IN || "7d" },
   );
@@ -94,6 +96,14 @@ const registerUser = async ({ email, password, name }) => {
   const verificationToken = generateVerificationToken();
   const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
+  // Create project for the user
+  const project = await Project.create({
+    name: `${name}'s Project`,
+    apiKey: generateApiKey(),
+    domain: "example.com", // User can update later in settings
+    active: true,
+  });
+
   // Create user
   const user = await User.create({
     email: email.toLowerCase(),
@@ -103,10 +113,11 @@ const registerUser = async ({ email, password, name }) => {
     emailVerified: false,
     verificationToken,
     verificationTokenExpires,
+    projectId: project._id,
   });
 
   // Generate JWT
-  const token = generateToken(user._id, user.email);
+  const token = generateToken(user._id, user.email, user.projectId);
 
   return {
     user: {
@@ -148,7 +159,7 @@ const loginUser = async ({ email, password }) => {
   await user.save();
 
   // Generate JWT
-  const token = generateToken(user._id, user.email);
+  const token = generateToken(user._id, user.email, user.projectId);
 
   return {
     user: {
@@ -194,6 +205,14 @@ const googleAuth = async (idToken) => {
     user.lastLoginAt = new Date();
     await user.save();
   } else {
+    // Create project for new Google user
+    const project = await Project.create({
+      name: `${googleUser.name}'s Project`,
+      apiKey: generateApiKey(),
+      domain: "example.com",
+      active: true,
+    });
+
     // Create new user
     user = await User.create({
       email: googleUser.email.toLowerCase(),
@@ -203,11 +222,12 @@ const googleAuth = async (idToken) => {
       provider: "google",
       emailVerified: true,
       lastLoginAt: new Date(),
+      projectId: project._id,
     });
   }
 
   // Generate JWT
-  const token = generateToken(user._id, user.email);
+  const token = generateToken(user._id, user.email, user.projectId);
 
   return {
     user: {

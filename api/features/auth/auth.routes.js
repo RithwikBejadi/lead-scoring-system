@@ -8,5 +8,6 @@ router.post("/google", authController.googleAuth);
 router.post("/verify-email", authController.verifyEmail);
 
 router.get("/me", protect, authController.getMe);
+router.get("/project", protect, authController.getMyProject);
 
 module.exports = router;

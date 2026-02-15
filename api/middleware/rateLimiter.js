@@ -5,7 +5,7 @@
  */
 
 const rateLimit = require("express-rate-limit");
-const { RedisStore, ipKeyGenerator } = require("rate-limit-redis");
+const { RedisStore } = require("rate-limit-redis");
 const redisClient = require("../config/redis");
 
 /**
@@ -24,7 +24,12 @@ const ingestRateLimiter = rateLimit({
 
   // Key by API key from request body
   keyGenerator: (req) => {
-    return req.body?.apiKey || ipKeyGenerator(req);
+    return req.body?.apiKey || req.ip;
+  },
+
+  // Disable IP validation check for custom keyGenerator
+  validate: {
+    ip: false,
   },
 
   // Custom response for rate limit exceeded
