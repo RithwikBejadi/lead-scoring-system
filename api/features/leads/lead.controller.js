@@ -13,7 +13,7 @@ const { getLeadTimeline, LeadNotFoundError } = require("./timeline.service");
 
 async function fetchLead(req, res, next) {
   try {
-    const lead = await getLeadById(req.params.id);
+    const lead = await getLeadById(req.params.id, req.user.projectId);
     res.json(lead);
   } catch (err) {
     next(err);
@@ -22,7 +22,7 @@ async function fetchLead(req, res, next) {
 
 async function fetchLeadHistory(req, res, next) {
   try {
-    const result = await getLeadHistory(req.params.id);
+    const result = await getLeadHistory(req.params.id, req.user.projectId);
     res.json(result);
   } catch (err) {
     next(err);
@@ -31,7 +31,10 @@ async function fetchLeadHistory(req, res, next) {
 
 async function createNewLead(req, res, next) {
   try {
-    const lead = await createLead(req.body);
+    const lead = await createLead({
+      ...req.body,
+      projectId: req.user.projectId,
+    });
     res.status(201).json(lead);
   } catch (err) {
     next(err);

@@ -12,11 +12,30 @@ const router = require("express").Router();
 const controller = require("./lead.controller");
 const intelligenceController = require("./intelligence.controller");
 const Lead = require("../../models/Lead");
+const { protect } = require("../../middleware/authMiddleware");
 
 async function getAllLeads(req, res, next) {
   try {
-    const leads = await Lead.find().sort({ createdAt: -1 }).limit(100);
-    res.json(leads);
+    const projectId = req.user.projectId;
+    const limit = parseInt(req.query.limit) || 100;
+    const skip = parseInt(req.query.skip) || 0;
+
+    const leads = await Lead.find({ projectId })
+      .sort({ currentScore: -1 })
+      .limit(limit)
+      .skip(skip);
+
+    const total = await Lead.countDocuments({ projectId });
+
+    res.json({
+      success: true,
+      data: {
+        leads,
+        total,
+        limit,
+        skip,
+      },
+    });
   } catch (err) {
     next(err);
   }
@@ -25,7 +44,8 @@ async function getAllLeads(req, res, next) {
 // Export leads as CSV
 async function exportLeads(req, res, next) {
   try {
-    const leads = await Lead.find().sort({ createdAt: -1 });
+    const projectId = req.user.projectId;
+    const leads = await Lead.find({ projectId }).sort({ createdAt: -1 });
 
     // CSV header
     const headers = [
@@ -65,8 +85,11 @@ async function exportLeads(req, res, next) {
 // Leaderboard - top leads by score
 async function getLeaderboard(req, res, next) {
   try {
+    const projectId = req.user.projectId;
     const limit = parseInt(req.query.limit) || 20;
-    const leads = await Lead.find().sort({ currentScore: -1 }).limit(limit);
+    const leads = await Lead.find({ projectId })
+      .sort({ currentScore: -1 })
+      .limit(limit);
 
     // Map to expected format
     const leaderboard = leads.map((l) => ({
@@ -85,9 +108,9 @@ async function getLeaderboard(req, res, next) {
   }
 }
 
-router.get("/", getAllLeads);
-router.get("/export", exportLeads);
-router.get("/leaderboard", getLeaderboard);
+router.get("/", protect, getAllLeads);
+router.get("/export", protect, exportLeads);
+router.get("/leaderboard", protect, getLeaderboard);
 router.post("/", controller.createNewLead);
 router.get("/:id", controller.fetchLead);
 router.get("/:id/history", controller.fetchLeadHistory);

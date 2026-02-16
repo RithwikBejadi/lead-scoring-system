@@ -16,21 +16,21 @@ class ValidationError extends Error {
   }
 }
 
-async function getLeadById(leadId) {
+async function getLeadById(leadId, projectId) {
   const validation = validateLeadId(leadId);
   if (!validation.isValid) throw new ValidationError(validation.error);
 
-  const lead = await Lead.findById(leadId);
+  const lead = await Lead.findOne({ _id: leadId, projectId });
   if (!lead) throw new LeadNotFoundError(leadId);
 
   return lead;
 }
 
-async function getLeadHistory(leadId) {
+async function getLeadHistory(leadId, projectId) {
   const validation = validateLeadId(leadId);
   if (!validation.isValid) throw new ValidationError(validation.error);
 
-  const lead = await Lead.findById(leadId);
+  const lead = await Lead.findOne({ _id: leadId, projectId });
   if (!lead) throw new LeadNotFoundError(leadId);
 
   const history = await ScoreHistory.find({ leadId })
