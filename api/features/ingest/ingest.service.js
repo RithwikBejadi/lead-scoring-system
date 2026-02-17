@@ -85,28 +85,50 @@ async function ingestEvent(payload) {
   }
 
   // Step 3: Auto-create lead if doesn't exist (upsert)
-  const lead = await Lead.findOneAndUpdate(
-    {
-      projectId: project._id,
-      anonymousId,
-    },
-    {
-      $setOnInsert: {
-        projectId: project._id,
-        anonymousId,
-        currentScore: 0,
-        leadStage: "cold",
-        status: "cold",
-        eventsLast24h: 0,
-        velocityScore: 0,
-        processing: false,
-      },
-    },
-    {
-      upsert: true,
-      new: true,
-    },
-  );
+  // Helper function to handle race conditions with retries
+  const findOrCreateLead = async (retries = 3) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        // Optimistic find
+        let found = await Lead.findOne({ projectId: project._id, anonymousId });
+        if (found) return found;
+
+        // Try upsert
+        return await Lead.findOneAndUpdate(
+          {
+            projectId: project._id,
+            anonymousId,
+          },
+          {
+            $setOnInsert: {
+              projectId: project._id,
+              anonymousId,
+              currentScore: 0,
+              leadStage: "cold",
+              status: "cold",
+              eventsLast24h: 0,
+              velocityScore: 0,
+              processing: false,
+            },
+          },
+          {
+            upsert: true,
+            new: true,
+          },
+        );
+      } catch (err) {
+        if (err.code === 11000) {
+          // Race condition: wait and retry
+          if (i === retries - 1) throw err;
+          await new Promise((resolve) => setTimeout(resolve, 100 * (i + 1)));
+          continue;
+        }
+        throw err;
+      }
+    }
+  };
+
+  const lead = await findOrCreateLead();
 
   // Step 4: Create event with unique ID and sessionId
   const eventId = uuidv4();

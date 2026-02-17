@@ -38,6 +38,7 @@ router.use("/rules", require("./features/rules/rules.routes"));
 router.use("/webhooks", require("./features/webhooks/webhook.routes"));
 router.use("/ingest", require("./features/ingest/ingest.routes")); // Public ingestion
 router.use("/projects", require("./features/projects/project.routes"));
+router.use("/analytics", require("./features/analytics/analytics.routes"));
 router.use("/admin", require("./features/admin/admin.routes"));
 
 module.exports = router;

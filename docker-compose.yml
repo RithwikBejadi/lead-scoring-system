@@ -26,6 +26,12 @@ services:
       dockerfile: ./worker/Dockerfile
     container_name: lead-scoring-worker
     env_file: .env
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/lead-scoring-db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_TLS=false
+      - REDIS_PASSWORD=
     depends_on:
       mongo:
         condition: service_healthy
@@ -39,6 +45,12 @@ services:
       dockerfile: ./api/Dockerfile
     container_name: lead-scoring-api
     env_file: .env
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/lead-scoring-db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_TLS=false
+      - REDIS_PASSWORD=
     ports:
       - "4000:4000"
     depends_on:

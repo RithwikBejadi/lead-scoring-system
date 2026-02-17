@@ -1,3 +1,4 @@
+require("dotenv").config();
 const connectDB = require("./config/db");
 const { app, server, io } = require("./app");
 const { seedDefaultRules } = require("./features/rules/rules.service");
