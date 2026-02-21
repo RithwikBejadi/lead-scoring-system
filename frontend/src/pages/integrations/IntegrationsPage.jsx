@@ -87,9 +87,13 @@ await lp.track({
     setTestStatus("sending");
     try {
       await api.post("/events/ingest", {
-        event: "test_ping",
+        event: "page_view",
         anonymousId: `test_${Date.now()}`,
-        properties: { source: "integrations_page", test: true },
+        properties: {
+          source: "integrations_page",
+          test: true,
+          path: "/test-validation",
+        },
       });
       setTestStatus("ok");
     } catch {

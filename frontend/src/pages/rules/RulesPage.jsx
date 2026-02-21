@@ -219,26 +219,43 @@ export default function RulesPage() {
   }, []);
 
   const handleCreate = async (form) => {
-    await rulesApi.create({
-      eventType: form.eventType,
-      points: form.points,
-      description: form.description,
-    });
-    setCreating(false);
-    load();
+    try {
+      const formattedName = form.eventType
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+      await rulesApi.create({
+        eventType: form.eventType,
+        name: formattedName,
+        points: form.points,
+        description: form.description,
+      });
+      setCreating(false);
+      load();
+    } catch (err) {
+      console.error("Failed to create rule:", err);
+    }
   };
 
   const handleUpdate = async (id, form) => {
-    await rulesApi.update(id, form);
-    setEditingId(null);
-    load();
+    try {
+      await rulesApi.update(id, form);
+      setEditingId(null);
+      load();
+    } catch (err) {
+      console.error("Failed to update rule:", err);
+    }
   };
 
   const handleDelete = async (id) => {
     setDeletingId(id);
-    await rulesApi.delete(id);
-    setDeletingId(null);
-    load();
+    try {
+      await rulesApi.delete(id);
+      load();
+    } catch (err) {
+      console.error("Failed to delete rule:", err);
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
