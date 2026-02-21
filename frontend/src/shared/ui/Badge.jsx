@@ -1,38 +1,37 @@
-/**
- * Badge — status/type badge.
- * variant: "default" | "success" | "warning" | "danger" | "info" | "neutral"
- */
+import React from "react";
+
 const variants = {
-  default: "bg-neutral-800 text-neutral-300 border-neutral-700",
-  success: "bg-emerald-950 text-emerald-400 border-emerald-800",
-  warning: "bg-amber-950 text-amber-400 border-amber-800",
-  danger: "bg-red-950 text-red-400 border-red-800",
-  info: "bg-blue-950 text-blue-400 border-blue-800",
-  neutral: "bg-neutral-800 text-neutral-400 border-neutral-700",
-  purple: "bg-purple-950 text-purple-400 border-purple-800",
+  default: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300",
+  primary: "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
+  success:
+    "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300",
+  warning:
+    "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
+  error: "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300",
+  purple:
+    "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300",
+  mono: "bg-slate-900 dark:bg-slate-950 text-emerald-400 font-mono",
 };
 
-export function Badge({ children, variant = "default", className = "" }) {
+const sizes = {
+  xs: "px-1.5 py-0.5 text-[10px]",
+  sm: "px-2 py-0.5 text-[11px]",
+  md: "px-2.5 py-1 text-xs",
+};
+
+export default function Badge({
+  children,
+  variant = "default",
+  size = "sm",
+  className = "",
+  dot,
+}) {
   return (
     <span
-      className={`inline-flex items-center px-1.5 py-0.5 text-[11px] font-mono font-medium rounded border ${variants[variant] || variants.default} ${className}`}
+      className={`inline-flex items-center gap-1 rounded font-medium ${variants[variant]} ${sizes[size]} ${className}`}
     >
+      {dot && <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />}
       {children}
     </span>
   );
-}
-
-/** Map common event names to badge variants */
-export function EventTypeBadge({ type }) {
-  const map = {
-    page_view: "default",
-    identify: "success",
-    click: "info",
-    form_submit: "purple",
-    signup: "success",
-    purchase: "warning",
-    error: "danger",
-  };
-  const variant = map[type] || "neutral";
-  return <Badge variant={variant}>{type}</Badge>;
 }

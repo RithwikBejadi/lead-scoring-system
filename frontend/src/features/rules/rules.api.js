@@ -1,32 +1,29 @@
-/**
- * rules.api.js — Scoring rules CRUD + simulation.
- */
-import api from "../../api/axios.config";
+import api from "../../shared/api/axios.js";
 
 export const rulesApi = {
   getAll: async () => {
-    const response = await api.get("/rules");
-    return response.data;
+    const r = await api.get("/rules");
+    return r.data;
   },
-
-  create: async (data) => {
-    const response = await api.post("/rules", data);
-    return response.data;
+  getById: async (id) => {
+    const r = await api.get(`/rules/${id}`);
+    return r.data;
   },
-
-  update: async (id, data) => {
-    const response = await api.put(`/rules/${id}`, data);
-    return response.data;
+  create: async (payload) => {
+    const r = await api.post("/rules", payload);
+    return r.data;
   },
-
+  update: async (id, payload) => {
+    const r = await api.put(`/rules/${id}`, payload);
+    return r.data;
+  },
   delete: async (id) => {
-    const response = await api.delete(`/rules/${id}`);
-    return response.data;
+    const r = await api.delete(`/rules/${id}`);
+    return r.data;
   },
-
-  // Simulate: POST a sample event body, get score delta back
-  simulate: async (eventBody) => {
-    const response = await api.post("/rules/simulate", eventBody);
-    return response.data;
+  /** Simulate: given event type and current score, return new score delta */
+  simulate: async (payload) => {
+    const r = await api.post("/rules/simulate", payload);
+    return r.data;
   },
 };

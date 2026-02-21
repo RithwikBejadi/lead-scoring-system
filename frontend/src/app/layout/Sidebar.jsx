@@ -1,94 +1,46 @@
-/**
- * Sidebar — developer-first navigation.
- * Ordered: Overview → Events → Leads → Rules → Automations → Integrations → System
- */
-
-import { NavLink, useNavigate } from "react-router-dom";
+import React from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 
-const NAV_ITEMS = [
+const nav = [
   {
-    label: "Overview",
-    to: "/overview",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.5"/>
-        <rect x="9" y="1" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.5"/>
-        <rect x="1" y="9" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.5"/>
-        <rect x="9" y="9" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.5"/>
-      </svg>
-    ),
+    group: null,
+    items: [{ path: "/overview", icon: "dashboard", label: "Overview" }],
   },
   {
-    label: "Events",
-    to: "/events",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <polyline points="1,11 4,6 7,9 10,4 13,7 15,5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
-    badge: "live",
+    group: "Data",
+    items: [
+      { path: "/events", icon: "bolt", label: "Events" },
+      { path: "/leads", icon: "people", label: "Leads" },
+    ],
   },
   {
-    label: "Leads",
-    to: "/leads",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="8" cy="5" r="3" stroke="currentColor" strokeWidth="1.5"/>
-        <path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-      </svg>
-    ),
+    group: "Configure",
+    items: [
+      { path: "/rules", icon: "rule", label: "Rules" },
+      { path: "/automations", icon: "auto_fix_high", label: "Automations" },
+    ],
   },
   {
-    label: "Rules",
-    to: "/rules",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M3 4h10M3 8h7M3 12h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-      </svg>
-    ),
-  },
-  {
-    label: "Automations",
-    to: "/automations",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M8 2v3M8 11v3M2 8h3M11 8h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-        <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
-      </svg>
-    ),
-  },
-  {
-    label: "Integrations",
-    to: "/integrations",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M5 8h6M10 5l3 3-3 3M6 5L3 8l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
-  },
-  {
-    label: "System",
-    to: "/system",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="1" y="3" width="14" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
-        <path d="M5 6h6M5 9h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-      </svg>
-    ),
+    group: "Developer",
+    items: [
+      {
+        path: "/integrations",
+        icon: "integration_instructions",
+        label: "Integrations",
+      },
+      { path: "/system", icon: "monitor_heart", label: "System" },
+    ],
   },
 ];
 
-const navLinkClass = ({ isActive }) =>
-  `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-    isActive
-      ? "bg-white/10 text-white"
-      : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
-  }`;
-
-export default function Sidebar({ collapsed, onToggle }) {
-  const { logout } = useAuth();
+export default function Sidebar() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const { user, logout } = useAuth();
+
+  const isActive = (path) =>
+    pathname === path || (path !== "/overview" && pathname.startsWith(path));
 
   const handleLogout = () => {
     logout();
@@ -96,47 +48,72 @@ export default function Sidebar({ collapsed, onToggle }) {
   };
 
   return (
-    <aside
-      className={`flex flex-col h-full border-r border-white/5 bg-[#111111] transition-all duration-200 ${
-        collapsed ? "w-14" : "w-56"
-      }`}
-    >
+    <aside className="w-60 bg-[#0d0d0f] border-r border-white/8 flex-shrink-0 flex flex-col z-20 hidden md:flex">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 h-14 border-b border-white/5 flex-shrink-0">
-        <div className="w-5 h-5 bg-emerald-500 rounded flex-shrink-0" />
-        {!collapsed && (
-          <span className="text-sm font-semibold tracking-tight text-white truncate">
-            LeadScore
-          </span>
-        )}
+      <div className="h-14 flex items-center px-5 border-b border-white/8 gap-2.5">
+        <div className="w-7 h-7 bg-blue-500 rounded-md flex items-center justify-center">
+          <span className="material-icons text-white text-sm">bolt</span>
+        </div>
+        <span className="font-bold text-white tracking-tight text-sm">
+          LeadPulse
+        </span>
+        <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 bg-white/10 text-white/50 rounded">
+          OS
+        </span>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 flex flex-col gap-0.5 p-2 overflow-y-auto">
-        {NAV_ITEMS.map((item) => (
-          <NavLink key={item.to} to={item.to} className={navLinkClass}>
-            <span className="flex-shrink-0">{item.icon}</span>
-            {!collapsed && (
-              <span className="flex-1 truncate">{item.label}</span>
+      <nav className="flex-1 py-3 overflow-y-auto scrollbar-none">
+        {nav.map(({ group, items }) => (
+          <div key={group || "__root"} className="mb-1">
+            {group && (
+              <div className="px-4 pt-4 pb-1.5 text-[10px] font-semibold text-white/30 uppercase tracking-widest">
+                {group}
+              </div>
             )}
-            {!collapsed && item.badge === "live" && (
-              <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            )}
-          </NavLink>
+            {items.map(({ path, icon, label }) => (
+              <button
+                key={path}
+                onClick={() => navigate(path)}
+                className={`w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors rounded-none relative
+                  ${
+                    isActive(path)
+                      ? "text-white bg-white/8 border-r-2 border-blue-500"
+                      : "text-white/45 hover:text-white/80 hover:bg-white/5"
+                  }`}
+              >
+                <span
+                  className={`material-icons text-[18px] ${isActive(path) ? "text-blue-400" : ""}`}
+                >
+                  {icon}
+                </span>
+                {label}
+              </button>
+            ))}
+          </div>
         ))}
       </nav>
 
-      {/* Footer */}
-      <div className="p-2 border-t border-white/5 flex-shrink-0">
-        <button
-          onClick={handleLogout}
-          className={`flex items-center gap-3 w-full px-3 py-2 rounded-md text-sm text-neutral-500 hover:text-neutral-300 hover:bg-white/5 transition-colors ${collapsed ? "justify-center" : ""}`}
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M5 2H2.5A1.5 1.5 0 001 3.5v7A1.5 1.5 0 002.5 12H5M9.5 10l3-3-3-3M12.5 7H5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          {!collapsed && <span>Sign out</span>}
-        </button>
+      {/* User */}
+      <div className="p-3 border-t border-white/8">
+        <div className="flex items-center gap-2.5 px-1">
+          <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+            {user?.name?.charAt(0).toUpperCase() || "U"}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-white/80 truncate">
+              {user?.name || "User"}
+            </p>
+            <p className="text-[10px] text-white/35 truncate">{user?.email}</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="text-white/30 hover:text-white/70 transition-colors"
+            title="Sign out"
+          >
+            <span className="material-icons text-[16px]">logout</span>
+          </button>
+        </div>
       </div>
     </aside>
   );

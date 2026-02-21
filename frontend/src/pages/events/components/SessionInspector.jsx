@@ -1,227 +1,255 @@
-/**
- * SessionInspector — right panel.
- * Opens when an event row is clicked.
- * Shows: event properties, session timeline, identity transitions, score evolution.
- */
+import React, { useState, useEffect } from "react";
+import { eventsApi } from "../../../features/events/events.api.js";
+import Badge from "../../../shared/ui/Badge.jsx";
+import JsonViewer from "../../../shared/ui/JsonViewer.jsx";
+import Spinner from "../../../shared/ui/Spinner.jsx";
 
-import { useState, useEffect } from "react";
-import { eventsApi } from "../../../features/events/events.api";
-import { JsonViewer } from "../../../shared/ui/JsonViewer";
-import { EventTypeBadge } from "../../../shared/ui/Badge";
-import { Spinner } from "../../../shared/ui/Spinner";
+const TYPE_VARIANTS = {
+  page_view: "default",
+  click: "primary",
+  identify: "purple",
+  form_submit: "success",
+  demo_request: "success",
+  pricing_view: "warning",
+  signup: "success",
+  login: "primary",
+};
+const TYPE_ICONS = {
+  page_view: "visibility",
+  click: "ads_click",
+  identify: "fingerprint",
+  form_submit: "assignment_turned_in",
+  demo_request: "mail",
+  pricing_view: "attach_money",
+  signup: "person_add",
+  login: "login",
+};
 
-function ts(dateStr) {
-  if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleString();
+function relTime(ts) {
+  const d = (Date.now() - new Date(ts)) / 1000;
+  if (d < 5) return "just now";
+  if (d < 60) return `${Math.floor(d)}s ago`;
+  if (d < 3600) return `${Math.floor(d / 60)}m ago`;
+  return `${Math.floor(d / 3600)}h ago`;
 }
 
-function TimelineItem({ evt, isFirst }) {
-  const type = evt.type || evt.eventType;
-  return (
-    <div className="flex gap-2.5">
-      <div className="flex flex-col items-center flex-shrink-0">
-        <div
-          className={`w-1.5 h-1.5 rounded-full mt-1 flex-shrink-0 ${
-            type === "identify" ? "bg-emerald-400" : "bg-neutral-600"
-          }`}
-        />
-        {!isFirst && <div className="w-px flex-1 bg-white/5 mt-1" />}
-      </div>
-      <div className="pb-3 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <EventTypeBadge type={type || "unknown"} />
-          {evt.scoreDelta != null && (
-            <span
-              className={`text-[10px] font-mono ${
-                evt.scoreDelta > 0 ? "text-emerald-400" : "text-red-400"
-              }`}
-            >
-              {evt.scoreDelta > 0 ? "+" : ""}{evt.scoreDelta}
-            </span>
-          )}
-        </div>
-        <p className="text-[11px] font-mono text-neutral-600 truncate">
-          {new Date(evt.createdAt || evt.timestamp).toLocaleTimeString()}
-        </p>
-      </div>
-    </div>
-  );
+function absTime(ts) {
+  return ts ? new Date(ts).toLocaleString("en-US", { hour12: false }) : "—";
 }
 
 export default function SessionInspector({ event, onClose }) {
-  const [session, setSession] = useState(null);
-  const [loadingSession, setLoadingSession] = useState(false);
-  const [tab, setTab] = useState("event"); // "event" | "session" | "raw"
+  const [timeline, setTimeline] = useState(null);
+  const [tlLoading, setTlLoading] = useState(false);
+  const [view, setView] = useState("timeline"); // "timeline" | "json"
 
   useEffect(() => {
-    if (!event) return;
-    setTab("event");
-    setSession(null);
-    if (event.sessionId) {
-      setLoadingSession(true);
-      eventsApi.getSession(event.sessionId)
-        .then(res => setSession(Array.isArray(res) ? res : (res.data || res.events || [])))
-        .catch(() => setSession([]))
-        .finally(() => setLoadingSession(false));
+    if (!event) {
+      setTimeline(null);
+      return;
     }
-  }, [event?._id]);
+    if (!event.leadId && !event.lead) return;
 
-  if (!event) {
-    return (
-      <div className="w-[360px] flex-shrink-0 border-l border-white/5 flex flex-col items-center justify-center bg-[#131313]">
-        <p className="text-xs text-neutral-700">Click an event to inspect</p>
-      </div>
-    );
-  }
+    let cancelled = false;
+    setTlLoading(true);
 
-  const sessionEvents = session || [];
+    eventsApi
+      .getSession(event.leadId || event.lead)
+      .then((data) => {
+        if (!cancelled) setTimeline(data);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setTlLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [event?.leadId, event?.lead, event?._id]);
+
+  if (!event) return null;
+
+  const allEvents = timeline?.sessions?.flatMap((s) => s.events) || [];
 
   return (
-    <div className="w-[360px] flex-shrink-0 border-l border-white/5 flex flex-col bg-[#131313] overflow-hidden">
+    <aside className="w-[380px] shrink-0 border-l border-google-border bg-surface-light dark:bg-surface-dark flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <EventTypeBadge type={event.type || event.eventType || "unknown"} />
-          <span className="text-xs font-mono text-neutral-500 truncate max-w-[160px]">
-            {event._id?.slice(-8) || "—"}
+      <div className="px-5 py-3.5 border-b border-google-border flex items-center justify-between shrink-0">
+        <div>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary-light dark:text-text-secondary-dark">
+            Session Inspector
           </span>
+          <div className="font-mono text-xs text-text-primary-light dark:text-text-primary-dark mt-0.5 truncate max-w-[260px]">
+            {event.event || event.eventType}
+          </div>
         </div>
         <button
           onClick={onClose}
-          className="p-1 text-neutral-600 hover:text-neutral-300 rounded transition-colors"
+          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
         >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
+          <span className="material-icons text-[18px]">close</span>
         </button>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-white/5 flex-shrink-0">
-        {["event", "session", "raw"].map(t => (
+      {/* Tab switcher */}
+      <div className="flex border-b border-google-border shrink-0">
+        {["timeline", "json"].map((t) => (
           <button
             key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2 text-xs font-mono transition-colors ${
-              tab === t
-                ? "text-white border-b-2 border-emerald-500"
-                : "text-neutral-600 hover:text-neutral-400"
-            }`}
+            onClick={() => setView(t)}
+            className={`flex-1 py-2.5 text-[11px] font-semibold uppercase tracking-widest transition-colors
+              ${view === t ? "text-primary border-b-2 border-primary" : "text-text-secondary-light dark:text-text-secondary-dark hover:text-primary"}`}
           >
             {t}
           </button>
         ))}
       </div>
 
-      {/* Body */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {tab === "event" && (
-          <div className="flex flex-col gap-4">
-            {/* Identity */}
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
-                Identity
+      <div className="flex-1 overflow-y-auto">
+        {view === "json" ? (
+          <div className="p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-text-secondary-light dark:text-text-secondary-dark mb-2">
+              Raw Event Payload
+            </p>
+            <JsonViewer data={event} />
+          </div>
+        ) : (
+          <div className="p-5 space-y-6">
+            {/* Event metadata */}
+            <section>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-text-secondary-light dark:text-text-secondary-dark mb-3">
+                Event Details
               </p>
-              <div className="flex flex-col gap-1">
-                {event.email && (
-                  <p className="text-xs font-mono text-neutral-300">{event.email}</p>
-                )}
+              <div className="space-y-2">
+                <MetaRow label="Type">
+                  <Badge
+                    variant={TYPE_VARIANTS[event.event] || "default"}
+                    size="sm"
+                  >
+                    <span className="material-icons text-[10px]">
+                      {TYPE_ICONS[event.event] || "bolt"}
+                    </span>
+                    {event.event || event.eventType}
+                  </Badge>
+                </MetaRow>
+                <MetaRow label="Timestamp">
+                  {absTime(event.timestamp || event.createdAt)}
+                </MetaRow>
+                {event.email && <MetaRow label="Email">{event.email}</MetaRow>}
                 {event.anonymousId && (
-                  <p className="text-xs font-mono text-neutral-500">{event.anonymousId}</p>
+                  <MetaRow label="Anon ID">
+                    <span className="font-mono text-[11px]">
+                      {event.anonymousId}
+                    </span>
+                  </MetaRow>
                 )}
                 {event.sessionId && (
-                  <p className="text-xs font-mono text-neutral-600 truncate">
-                    session: {event.sessionId}
-                  </p>
+                  <MetaRow label="Session">
+                    <span className="font-mono text-[11px]">
+                      {event.sessionId}
+                    </span>
+                  </MetaRow>
+                )}
+                {event.scoreDelta !== undefined && (
+                  <MetaRow label="Score Δ">
+                    <span
+                      className={`font-bold ${event.scoreDelta >= 0 ? "text-emerald-500" : "text-red-500"}`}
+                    >
+                      {event.scoreDelta >= 0
+                        ? `+${event.scoreDelta}`
+                        : event.scoreDelta}{" "}
+                      pts
+                    </span>
+                  </MetaRow>
                 )}
               </div>
-            </div>
-
-            {/* Timestamps */}
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
-                Timestamp
-              </p>
-              <p className="text-xs font-mono text-neutral-400">
-                {ts(event.createdAt || event.timestamp)}
-              </p>
-            </div>
-
-            {/* Score delta */}
-            {event.scoreDelta != null && (
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
-                  Score Delta
-                </p>
-                <p className={`text-xl font-mono font-semibold ${event.scoreDelta > 0 ? "text-emerald-400" : "text-red-400"}`}>
-                  {event.scoreDelta > 0 ? "+" : ""}{event.scoreDelta}
-                </p>
-              </div>
-            )}
-
-            {/* Processing status */}
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
-                Processing
-              </p>
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                <span className="text-xs font-mono text-neutral-400">
-                  {event.processed ? "processed" : "queued"}
-                </span>
-              </div>
-            </div>
+            </section>
 
             {/* Properties */}
             {event.properties && Object.keys(event.properties).length > 0 && (
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
+              <section>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-text-secondary-light dark:text-text-secondary-dark mb-2">
                   Properties
                 </p>
-                <div className="flex flex-col gap-1">
+                <div className="bg-slate-50 dark:bg-slate-800/60 rounded-lg divide-y divide-google-border overflow-hidden">
                   {Object.entries(event.properties).map(([k, v]) => (
-                    <div key={k} className="flex gap-2 text-xs font-mono">
-                      <span className="text-neutral-600 flex-shrink-0">{k}:</span>
-                      <span className="text-neutral-400 truncate">{String(v)}</span>
+                    <div key={k} className="flex items-start gap-3 px-3 py-2">
+                      <span className="font-mono text-[11px] text-primary shrink-0 w-28 truncate">
+                        {k}
+                      </span>
+                      <span className="text-[11px] text-text-primary-light dark:text-text-primary-dark break-all">
+                        {String(v)}
+                      </span>
                     </div>
                   ))}
                 </div>
-              </div>
+              </section>
             )}
-          </div>
-        )}
 
-        {tab === "session" && (
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-3">
-              Session ({sessionEvents.length} events)
-            </p>
-            {loadingSession ? (
-              <div className="flex justify-center py-6">
-                <Spinner size="sm" />
-              </div>
-            ) : sessionEvents.length === 0 ? (
-              <p className="text-xs text-neutral-700 text-center py-6">
-                {event.sessionId ? "No session data" : "No session ID on this event"}
+            {/* Session timeline */}
+            <section>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-text-secondary-light dark:text-text-secondary-dark mb-3">
+                Session Timeline{" "}
+                {allEvents.length > 0 && `(${allEvents.length})`}
               </p>
-            ) : (
-              <div className="flex flex-col">
-                {sessionEvents.map((e, i) => (
-                  <TimelineItem
-                    key={e._id || i}
-                    evt={e}
-                    isFirst={i === sessionEvents.length - 1}
-                  />
-                ))}
-              </div>
-            )}
+              {tlLoading ? (
+                <div className="flex justify-center py-6">
+                  <Spinner />
+                </div>
+              ) : allEvents.length === 0 ? (
+                <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
+                  No timeline data
+                </p>
+              ) : (
+                <div className="space-y-3 relative before:absolute before:left-[11px] before:top-2 before:bottom-0 before:w-px before:bg-google-border">
+                  {allEvents.slice(0, 20).map((e, i) => (
+                    <div key={i} className="pl-7 relative">
+                      <div
+                        className={`absolute left-0 top-1 w-[22px] h-[22px] rounded-full flex items-center justify-center ring-2 ring-surface-light dark:ring-surface-dark z-10
+                        ${i === 0 ? "bg-primary text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"}`}
+                      >
+                        <span className="material-icons text-[11px]">
+                          {TYPE_ICONS[e.event] || "bolt"}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[11px] font-bold text-text-primary-light dark:text-text-primary-dark">
+                            {e.event}
+                          </span>
+                          <span className="text-[10px] text-text-secondary-light dark:text-text-secondary-dark">
+                            {relTime(e.timestamp)}
+                          </span>
+                        </div>
+                        {e.delta != null && e.delta !== 0 && (
+                          <span
+                            className={`text-[10px] font-bold ${e.delta > 0 ? "text-emerald-500" : "text-red-500"}`}
+                          >
+                            {e.delta > 0 ? `+${e.delta}` : e.delta} pts
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
           </div>
-        )}
-
-        {tab === "raw" && (
-          <JsonViewer data={event} collapsed={false} />
         )}
       </div>
+    </aside>
+  );
+}
+
+function MetaRow({ label, children }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="text-[11px] text-text-secondary-light dark:text-text-secondary-dark w-24 shrink-0">
+        {label}
+      </span>
+      <span className="text-[11px] text-text-primary-light dark:text-text-primary-dark break-all">
+        {children}
+      </span>
     </div>
   );
 }

@@ -1,77 +1,27 @@
 @import "tailwindcss";
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap");
+@config "../tailwind.config.js";
 
-@theme {
-  --color-primary: #2b6cee;
-  --color-primary-dark: #1a5ac6;
-  --color-background-light: #f6f6f8;
-  --color-background-dark: #101622;
-  --color-surface-light: #ffffff;
-  --color-surface-dark: #1e293b;
-  --color-border-light: #e0e0e0;
-  --color-border-dark: #2d3748;
-  --color-text-primary-light: #202124;
-  --color-text-secondary-light: #5f6368;
-  --color-text-primary-dark: #e2e8f0;
-  --color-text-secondary-dark: #94a3b8;
-  --color-success: #1e8e3e;
-  --color-warning: #f9ab00;
-  --color-error: #d93025;
-
-  --font-display: "Inter", sans-serif;
-
-  --shadow-subtle:
-    0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
-  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-
-  --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+@layer utilities {
+  .noise-bg {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+  }
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@layer base {
+  body {
+    @apply font-display text-text-primary-light bg-background-light dark:bg-background-dark dark:text-text-primary-dark;
+  }
 }
 
-html {
-  scroll-behavior: smooth;
+/* Custom scrollbar hiding utility */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-body {
-  font-family:
-    "Inter",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  letter-spacing: -0.01em;
-  background: #0d0d0d;
-  color: #e5e5e5;
-}
-
-/* Developer-dark scrollbar */
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #2a2a2a;
-  border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #404040;
-}
-
-/* Hide number input arrows */
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+.sparkline path {
+  vector-effect: non-scaling-stroke;
 }

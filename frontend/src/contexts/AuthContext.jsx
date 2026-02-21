@@ -1,8 +1,3 @@
-/**
- * FILE: contexts/AuthContext.jsx
- * PURPOSE: Authentication context provider with Google OAuth and email/password support
- */
-
 import {
   createContext,
   useContext,
@@ -10,19 +5,19 @@ import {
   useEffect,
   useCallback,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import { authApi } from "../api/auth.api";
+import { GOOGLE_CLIENT_ID } from "../config";
+import { reconnectSocket, disconnectSocket } from "../sockets/socket";
 
 const AuthContext = createContext(null);
-
-// Google Client ID from environment
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
   const [error, setError] = useState(null);
 
-  // Check for existing session on mount
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem("authToken");
@@ -42,6 +37,18 @@ export function AuthProvider({ children }) {
     checkAuth();
   }, []);
 
+  // Listen for 401 auth:logout events from axios interceptor
+  useEffect(() => {
+    const handleAuthLogout = () => {
+      setUser(null);
+      setError(null);
+      disconnectSocket();
+      navigate("/login");
+    };
+    window.addEventListener("auth:logout", handleAuthLogout);
+    return () => window.removeEventListener("auth:logout", handleAuthLogout);
+  }, [navigate]);
+
   // Load Google Sign-In script
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return;
@@ -53,7 +60,9 @@ export function AuthProvider({ children }) {
     document.body.appendChild(script);
 
     return () => {
-      document.body.removeChild(script);
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
     };
   }, []);
 
@@ -88,6 +97,7 @@ export function AuthProvider({ children }) {
       if (response.success) {
         localStorage.setItem("authToken", response.data.token);
         setUser(response.data.user);
+        reconnectSocket();
         return { success: true };
       }
       throw new Error(response.error || "Login failed");
@@ -123,6 +133,7 @@ export function AuthProvider({ children }) {
               if (authResponse.success) {
                 localStorage.setItem("authToken", authResponse.data.token);
                 setUser(authResponse.data.user);
+                reconnectSocket();
                 resolve({ success: true });
               } else {
                 throw new Error(authResponse.error || "Google sign-in failed");

@@ -1,81 +1,108 @@
-/**
- * EventRow — single row in the event stream.
- * Click to select and open session inspector.
- */
+import React from "react";
+import Badge from "../../../shared/ui/Badge.jsx";
 
-import { EventTypeBadge } from "../../../shared/ui/Badge";
+const TYPE_VARIANTS = {
+  page_view: "default",
+  click: "primary",
+  identify: "purple",
+  form_submit: "success",
+  demo_request: "success",
+  pricing_view: "warning",
+  signup: "success",
+  login: "primary",
+  custom: "default",
+};
 
-function ts(dateStr) {
-  if (!dateStr) return "—";
-  const d = new Date(dateStr);
-  return d.toLocaleTimeString("en-US", {
-    hour12: false,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+const TYPE_ICONS = {
+  page_view: "visibility",
+  click: "ads_click",
+  identify: "fingerprint",
+  form_submit: "assignment_turned_in",
+  demo_request: "mail",
+  pricing_view: "attach_money",
+  signup: "person_add",
+  login: "login",
+};
+
+function relativeTime(ts) {
+  if (!ts) return "";
+  const d = (Date.now() - new Date(ts)) / 1000;
+  if (d < 5) return "just now";
+  if (d < 60) return `${Math.floor(d)}s ago`;
+  if (d < 3600) return `${Math.floor(d / 60)}m ago`;
+  return `${Math.floor(d / 3600)}h ago`;
 }
 
-function identity(event) {
-  if (event.email) return event.email;
-  if (event.properties?.email) return event.properties.email;
-  if (event.anonymousId) return event.anonymousId;
-  if (event.leadId?.email) return event.leadId.email;
-  return "anonymous";
-}
-
-function shortProp(event) {
-  const p = event.properties || {};
-  if (p.page) return p.page;
-  if (p.url) return p.url;
-  if (p.element) return p.element;
-  if (p.form) return p.form;
-  const keys = Object.keys(p);
-  if (keys.length === 0) return "";
-  return `${keys[0]}=${String(p[keys[0]]).slice(0, 24)}`;
+function absTime(ts) {
+  return ts ? new Date(ts).toLocaleTimeString("en-US", { hour12: false }) : "";
 }
 
 export default function EventRow({ event, selected, onClick }) {
+  const variant = TYPE_VARIANTS[event.event] || "default";
+  const icon = TYPE_ICONS[event.event] || "bolt";
+
+  const identity = event.email || event.anonymousId?.substring(0, 12) || "—";
+  const page =
+    event.properties?.page ||
+    event.properties?.url ||
+    event.properties?.path ||
+    "";
+
   return (
     <div
-      onClick={() => onClick(event)}
-      className={`group flex items-center gap-3 px-4 py-2 border-b border-white/[0.03] cursor-pointer transition-colors hover:bg-white/[0.03] ${
-        selected ? "bg-white/[0.05] border-l-2 border-l-emerald-500" : "border-l-2 border-l-transparent"
-      }`}
+      onClick={onClick}
+      className={`flex items-center gap-4 px-5 py-3 cursor-pointer border-b border-google-border text-xs transition-colors group
+        ${
+          selected
+            ? "bg-primary/5 border-l-2 border-l-primary"
+            : "hover:bg-slate-50 dark:hover:bg-slate-800/50 border-l-2 border-l-transparent"
+        }`}
     >
       {/* Timestamp */}
-      <span className="text-[11px] font-mono text-neutral-600 w-[70px] flex-shrink-0 tabular-nums">
-        {ts(event.createdAt || event.timestamp)}
+      <span className="font-mono text-text-secondary-light dark:text-text-secondary-dark shrink-0 w-[68px]">
+        {absTime(event.timestamp || event.createdAt)}
       </span>
 
-      {/* Event type */}
-      <div className="w-[110px] flex-shrink-0">
-        <EventTypeBadge type={event.type || event.eventType || "unknown"} />
+      {/* Event type badge */}
+      <div className="w-[148px] shrink-0">
+        <Badge variant={variant} size="sm">
+          <span className="material-icons text-[10px]">{icon}</span>
+          {event.event || event.eventType || "unknown"}
+        </Badge>
       </div>
 
       {/* Identity */}
-      <span className="text-[11px] font-mono text-neutral-400 w-[180px] flex-shrink-0 truncate">
-        {identity(event)}
+      <span className="font-mono text-text-primary-light dark:text-text-primary-dark truncate w-[160px] shrink-0">
+        {identity}
+        {event.email && (
+          <span className="ml-1 text-blue-500" title="Identity resolved">
+            <span className="material-icons text-[10px]">link</span>
+          </span>
+        )}
       </span>
 
-      {/* Short property */}
-      <span className="text-[11px] font-mono text-neutral-600 flex-1 truncate">
-        {shortProp(event)}
+      {/* Page / context */}
+      <span className="text-text-secondary-light dark:text-text-secondary-dark truncate flex-1">
+        {page}
       </span>
 
       {/* Score delta */}
-      {(event.scoreDelta != null || event.score_delta != null) && (
+      {event.scoreDelta !== undefined && event.scoreDelta !== 0 && (
         <span
-          className={`text-[11px] font-mono flex-shrink-0 tabular-nums ${
-            (event.scoreDelta || event.score_delta) > 0
-              ? "text-emerald-400"
-              : "text-red-400"
-          }`}
+          className={`font-bold shrink-0 ${event.scoreDelta > 0 ? "text-emerald-500" : "text-red-500"}`}
         >
-          {(event.scoreDelta || event.score_delta) > 0 ? "+" : ""}
-          {event.scoreDelta ?? event.score_delta}
+          {event.scoreDelta > 0 ? `+${event.scoreDelta}` : event.scoreDelta}
         </span>
       )}
+
+      {/* Relative time */}
+      <span className="text-text-secondary-light dark:text-text-secondary-dark shrink-0 ml-auto">
+        {relativeTime(event.timestamp || event.createdAt)}
+      </span>
+
+      <span className="material-icons text-slate-300 dark:text-slate-700 text-sm shrink-0 group-hover:text-primary transition-colors">
+        chevron_right
+      </span>
     </div>
   );
 }

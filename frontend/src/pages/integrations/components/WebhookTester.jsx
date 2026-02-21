@@ -3,16 +3,20 @@
  */
 
 import { useState } from "react";
-import api from "../../../api/axios.config";
+import axios from "axios";
+import { API_URL } from "../../../config";
 
-const SAMPLE_EVENT = {
-  type: "page_view",
+const BASE_URL = API_URL.replace("/api", "");
+
+const buildPayload = (apiKey) => ({
+  event: "page_view",
   anonymousId: "anon_test_001",
+  apiKey: apiKey || undefined,
   properties: {
     page: "/pricing",
     source: "devtools_test",
   },
-};
+});
 
 export default function WebhookTester({ apiKey }) {
   const [result, setResult] = useState(null);
@@ -23,7 +27,7 @@ export default function WebhookTester({ apiKey }) {
     setResult(null);
     try {
       const start = Date.now();
-      const res = await api.post("/ingest/event", SAMPLE_EVENT);
+      const res = await axios.post(`${BASE_URL}/api/ingest/event`, buildPayload(apiKey));
       const ms = Date.now() - start;
       setResult({
         ok: true,
@@ -49,7 +53,7 @@ export default function WebhookTester({ apiKey }) {
           Test Payload
         </p>
         <pre className="bg-[#0d0d0d] border border-white/5 rounded p-3 text-xs font-mono text-neutral-500">
-          {JSON.stringify(SAMPLE_EVENT, null, 2)}
+          {JSON.stringify(buildPayload(apiKey), null, 2)}
         </pre>
       </div>
 

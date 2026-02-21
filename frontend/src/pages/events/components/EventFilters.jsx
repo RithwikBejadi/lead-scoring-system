@@ -1,128 +1,137 @@
-/**
- * EventFilters — left panel filter controls.
- * Outputs changes via onFilterChange(filters).
- * No data fetching inside.
- */
-
-import { useState } from "react";
-
-const TIME_OPTIONS = [
-  { label: "Last 15m", value: "15m" },
-  { label: "Last 1h", value: "1h" },
-  { label: "Last 6h", value: "6h" },
-  { label: "Last 24h", value: "24h" },
-  { label: "Last 7d", value: "7d" },
-];
+import React from "react";
 
 const EVENT_TYPES = [
   "page_view",
   "click",
   "identify",
   "form_submit",
+  "demo_request",
+  "pricing_view",
   "signup",
-  "purchase",
-  "session_start",
-  "session_end",
-  "error",
+  "login",
+  "custom",
 ];
 
-function label_cls(active) {
-  return `cursor-pointer px-2.5 py-1 rounded text-xs font-mono transition-colors ${
-    active ? "bg-emerald-500/20 text-emerald-400 border border-emerald-700" : "text-neutral-500 hover:text-neutral-300 hover:bg-white/5"
-  }`;
-}
+const TIME_RANGES = [
+  { label: "Last 15 min", value: "15m" },
+  { label: "Last 1 hour", value: "1h" },
+  { label: "Last 24 hours", value: "24h" },
+  { label: "Last 7 days", value: "7d" },
+];
 
 export default function EventFilters({ filters, onChange }) {
-  const set = (key, val) => onChange({ ...filters, [key]: val });
-
-  const toggleType = (t) => {
-    const types = filters.eventTypes || [];
-    const next = types.includes(t) ? types.filter(x => x !== t) : [...types, t];
-    set("eventTypes", next);
-  };
+  const set = (key, value) => onChange({ ...filters, [key]: value });
 
   return (
-    <aside className="w-[220px] flex-shrink-0 border-r border-white/5 flex flex-col overflow-y-auto bg-[#131313]">
-      <div className="px-4 py-3 border-b border-white/5">
-        <h2 className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500">
+    <aside className="w-64 shrink-0 border-r border-google-border bg-surface-light dark:bg-surface-dark overflow-y-auto flex flex-col gap-1">
+      <div className="px-4 py-3 border-b border-google-border">
+        <h3 className="text-xs font-semibold text-text-primary-light dark:text-text-primary-dark uppercase tracking-widest">
           Filters
-        </h2>
+        </h3>
       </div>
 
-      <div className="flex flex-col gap-5 p-4">
-
-        {/* Time range */}
+      {/* Search by identity */}
+      <div className="px-4 py-3 border-b border-google-border space-y-3">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
-            Time Range
-          </p>
-          <div className="flex flex-col gap-1">
-            {TIME_OPTIONS.map(o => (
-              <button
-                key={o.value}
-                onClick={() => set("timeRange", o.value)}
-                className={label_cls(filters.timeRange === o.value)}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
+          <label className="text-[11px] font-medium text-text-secondary-light dark:text-text-secondary-dark block mb-1">
+            Email
+          </label>
+          <input
+            type="text"
+            placeholder="john@example.com"
+            value={filters.email || ""}
+            onChange={(e) => set("email", e.target.value)}
+            className="w-full px-3 py-1.5 text-xs bg-slate-100 dark:bg-slate-800 rounded border-none focus:ring-2 focus:ring-primary/50 text-text-primary-light dark:text-text-primary-dark placeholder-slate-400"
+          />
         </div>
-
-        {/* Event types */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
-            Event Type
-          </p>
-          <div className="flex flex-wrap gap-1">
-            {EVENT_TYPES.map(t => (
-              <button
-                key={t}
-                onClick={() => toggleType(t)}
-                className={label_cls((filters.eventTypes || []).includes(t))}
+          <label className="text-[11px] font-medium text-text-secondary-light dark:text-text-secondary-dark block mb-1">
+            Anonymous ID
+          </label>
+          <input
+            type="text"
+            placeholder="anon_xxxxxxxx"
+            value={filters.anonymousId || ""}
+            onChange={(e) => set("anonymousId", e.target.value)}
+            className="w-full px-3 py-1.5 text-xs bg-slate-100 dark:bg-slate-800 rounded border-none focus:ring-2 focus:ring-primary/50 text-text-primary-light dark:text-text-primary-dark placeholder-slate-400"
+          />
+        </div>
+      </div>
+
+      {/* Event type */}
+      <div className="px-4 py-3 border-b border-google-border">
+        <label className="text-[11px] font-medium text-text-secondary-light dark:text-text-secondary-dark block mb-2">
+          Event Type
+        </label>
+        <div className="space-y-1">
+          <label className="flex items-center gap-2 text-xs text-text-primary-light dark:text-text-primary-dark cursor-pointer">
+            <input
+              type="radio"
+              name="type"
+              value=""
+              checked={!filters.eventType}
+              onChange={() => set("eventType", "")}
+              className="accent-primary"
+            />
+            All types
+          </label>
+          {EVENT_TYPES.map((t) => (
+            <label
+              key={t}
+              className="flex items-center gap-2 text-xs cursor-pointer"
+            >
+              <input
+                type="radio"
+                name="type"
+                value={t}
+                checked={filters.eventType === t}
+                onChange={() => set("eventType", t)}
+                className="accent-primary"
+              />
+              <span
+                className={`text-text-primary-light dark:text-text-primary-dark font-mono ${filters.eventType === t ? "text-primary font-bold" : ""}`}
               >
                 {t}
-              </button>
-            ))}
-          </div>
+              </span>
+            </label>
+          ))}
         </div>
-
-        {/* Identity */}
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
-            Identity
-          </p>
-          <input
-            type="text"
-            placeholder="email or anonymousId"
-            value={filters.identity || ""}
-            onChange={e => set("identity", e.target.value)}
-            className="w-full bg-[#0d0d0d] border border-white/5 rounded px-2.5 py-1.5 text-xs font-mono text-neutral-300 placeholder-neutral-600 focus:outline-none focus:border-white/20"
-          />
-        </div>
-
-        {/* Domain */}
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
-            Domain
-          </p>
-          <input
-            type="text"
-            placeholder="app.yoursite.com"
-            value={filters.domain || ""}
-            onChange={e => set("domain", e.target.value)}
-            className="w-full bg-[#0d0d0d] border border-white/5 rounded px-2.5 py-1.5 text-xs font-mono text-neutral-300 placeholder-neutral-600 focus:outline-none focus:border-white/20"
-          />
-        </div>
-
-        {/* Reset */}
-        <button
-          onClick={() => onChange({ timeRange: "1h" })}
-          className="text-xs text-neutral-600 hover:text-neutral-400 transition-colors text-left"
-        >
-          Clear filters
-        </button>
       </div>
+
+      {/* Time range */}
+      <div className="px-4 py-3">
+        <label className="text-[11px] font-medium text-text-secondary-light dark:text-text-secondary-dark block mb-2">
+          Time Range
+        </label>
+        <div className="space-y-1">
+          {TIME_RANGES.map(({ label, value }) => (
+            <button
+              key={value}
+              onClick={() => set("timeRange", value)}
+              className={`w-full text-left px-3 py-1.5 rounded text-xs transition-colors
+                ${
+                  filters.timeRange === value
+                    ? "bg-primary/10 text-primary font-semibold"
+                    : "text-text-secondary-light dark:text-text-secondary-dark hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Clear */}
+      {(filters.email || filters.anonymousId || filters.eventType) && (
+        <div className="px-4 py-3 border-t border-google-border mt-auto">
+          <button
+            onClick={() => onChange({ timeRange: "1h" })}
+            className="w-full text-xs text-primary font-semibold hover:underline"
+          >
+            Clear filters
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

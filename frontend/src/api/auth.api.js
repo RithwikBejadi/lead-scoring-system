@@ -35,18 +35,18 @@ export const authApi = {
   },
 
   /**
-   * Verify email with token
-   */
-  verifyEmail: async (token) => {
-    const response = await api.post("/auth/verify-email", { token });
-    return response.data;
-  },
-
-  /**
    * Get current authenticated user
    */
   getMe: async () => {
     const response = await api.get("/auth/me");
+    return response.data;
+  },
+
+  /**
+   * Generate API key for webhook integrations
+   */
+  generateApiKey: async () => {
+    const response = await api.post("/auth/generate-api-key");
     return response.data;
   },
 };

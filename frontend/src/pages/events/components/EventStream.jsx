@@ -1,182 +1,132 @@
-/**
- * EventStream — center panel. Live scrolling event list.
- * Handles: fetch, infinite scroll, socket push, selected row.
- */
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { eventsApi } from "../../../features/events/events.api.js";
+import { initSocket } from "../../../sockets/socket.js";
+import { EmptyState } from "../../../shared/ui/Panel.jsx";
+import Spinner from "../../../shared/ui/Spinner.jsx";
+import EventRow from "./EventRow.jsx";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { eventsApi } from "../../../features/events/events.api";
-import { Spinner } from "../../../shared/ui/Spinner";
-import EventRow from "./EventRow";
-import { useSocket } from "../../../app/providers/SocketProvider";
-
-const PAGE_SIZE = 50;
-
-function buildParams(filters) {
-  const p = {};
-  if (filters.timeRange) p.timeRange = filters.timeRange;
-  if (filters.identity) {
-    if (filters.identity.includes("@")) p.email = filters.identity;
-    else p.anonymousId = filters.identity;
-  }
-  if (filters.domain) p.domain = filters.domain;
-  if (filters.eventTypes?.length) p.eventType = filters.eventTypes.join(",");
-  p.limit = PAGE_SIZE;
-  return p;
-}
-
-export default function EventStream({ filters, selectedEvent, onSelect }) {
+export default function EventStream({ filters, selectedEvent, onSelectEvent }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [page, setPage] = useState(1);
-  const [error, setError] = useState(null);
+  const [liveCount, setLiveCount] = useState(0);
   const bottomRef = useRef(null);
-  const { socket } = useSocket();
+  const autoScrollRef = useRef(true);
 
-  // Fetch page
-  const fetchEvents = useCallback(async (pageNum = 1, replace = false) => {
+  const load = useCallback(async () => {
     try {
-      if (pageNum === 1) setLoading(true);
-      else setLoadingMore(true);
+      const params = {};
+      if (filters.eventType) params.eventType = filters.eventType;
+      if (filters.email) params.email = filters.email;
+      if (filters.anonymousId) params.anonymousId = filters.anonymousId;
+      if (filters.timeRange) params.timeRange = filters.timeRange;
+      params.limit = 100;
 
-      const params = { ...buildParams(filters), page: pageNum };
-      const res = await eventsApi.getAll(params);
-      const incoming = Array.isArray(res) ? res : (res.data || res.events || []);
-
-      setEvents(prev => replace ? incoming : [...prev, ...incoming]);
-      setHasMore(incoming.length === PAGE_SIZE);
-      setPage(pageNum);
-      setError(null);
-    } catch (e) {
-      setError(e.message || "Failed to load events");
+      const r = await eventsApi.list(params);
+      const items = r?.data?.events || r?.data || r?.events || [];
+      setEvents(items);
+    } catch {
+      // silently fail on filter refreshes — keep existing data
     } finally {
       setLoading(false);
-      setLoadingMore(false);
     }
   }, [filters]);
 
-  // Refetch on filter change
+  // Initial load + filter changes
   useEffect(() => {
-    fetchEvents(1, true);
-  }, [fetchEvents]);
+    load();
+  }, [load]);
 
-  // Real-time socket push
+  // Live socket stream — push new events to top
   useEffect(() => {
-    if (!socket) return;
-    const handler = (event) => {
-      setEvents(prev => [event, ...prev.slice(0, 499)]);
-    };
-    socket.on("event:created", handler);
-    socket.on("eventReceived", handler);
-    return () => {
-      socket.off("event:created", handler);
-      socket.off("eventReceived", handler);
-    };
-  }, [socket]);
-
-  // Infinite scroll observer
-  useEffect(() => {
-    if (!bottomRef.current) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && hasMore && !loadingMore && !loading) {
-          fetchEvents(page + 1);
+    let sock;
+    try {
+      sock = initSocket();
+      const handler = (evt) => {
+        setEvents((prev) => [evt, ...prev].slice(0, 200));
+        setLiveCount((c) => c + 1);
+        if (autoScrollRef.current && bottomRef.current) {
+          // don't auto-scroll — log goes top-down newest first
         }
-      },
-      { threshold: 0.1 }
-    );
-    observer.observe(bottomRef.current);
-    return () => observer.disconnect();
-  }, [hasMore, loadingMore, loading, page, fetchEvents]);
+      };
+      sock.on("eventReceived", handler);
+      sock.on("leadUpdated", handler);
+      return () => {
+        sock.off("eventReceived", handler);
+        sock.off("leadUpdated", handler);
+      };
+    } catch {
+      /* socket not connected */
+    }
+  }, []);
 
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-3">
-        <p className="text-sm text-neutral-500">{error}</p>
-        <button
-          onClick={() => fetchEvents(1, true)}
-          className="text-xs text-emerald-400 hover:underline"
-        >
-          Retry
-        </button>
+        <div className="text-center">
+          <Spinner size="md" className="mx-auto mb-3" />
+          <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
+            Loading event stream...
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Column headers */}
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-white/5 bg-[#131313] flex-shrink-0">
-        <span className="text-[10px] font-semibold text-neutral-600 uppercase tracking-wider w-[70px] flex-shrink-0">
-          Time
-        </span>
-        <span className="text-[10px] font-semibold text-neutral-600 uppercase tracking-wider w-[110px] flex-shrink-0">
-          Type
-        </span>
-        <span className="text-[10px] font-semibold text-neutral-600 uppercase tracking-wider w-[180px] flex-shrink-0">
-          Identity
-        </span>
-        <span className="text-[10px] font-semibold text-neutral-600 uppercase tracking-wider flex-1">
-          Properties
-        </span>
-        <span className="text-[10px] font-semibold text-neutral-600 uppercase tracking-wider flex-shrink-0">
-          Δ Score
-        </span>
-      </div>
-
-      {/* Stream */}
-      <div className="flex-1 overflow-y-auto">
-        {events.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 gap-2">
-            <p className="text-sm text-neutral-600">No events found</p>
-            <p className="text-xs text-neutral-700">
-              Try adjusting your filters or send a test event
-            </p>
-          </div>
-        ) : (
-          <>
-            {events.map((evt, i) => (
-              <EventRow
-                key={evt._id || evt.id || i}
-                event={evt}
-                selected={selectedEvent?._id === evt._id}
-                onClick={onSelect}
-              />
-            ))}
-
-            {/* Sentinel for infinite scroll */}
-            <div ref={bottomRef} className="py-4 flex justify-center">
-              {loadingMore && <Spinner size="sm" />}
-              {!hasMore && events.length > 0 && (
-                <span className="text-[11px] text-neutral-700">
-                  End of results
-                </span>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Status bar */}
-      <div className="flex items-center justify-between px-4 py-2 border-t border-white/5 bg-[#131313] flex-shrink-0">
-        <span className="text-[11px] font-mono text-neutral-600">
+    <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      {/* Stream header */}
+      <div className="px-5 py-2.5 border-b border-google-border flex items-center gap-3 shrink-0 bg-surface-light dark:bg-surface-dark">
+        <div className="flex items-center gap-1.5 text-[11px] text-text-secondary-light dark:text-text-secondary-dark">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+          Live stream
+        </div>
+        <span className="text-[11px] font-medium text-text-secondary-light dark:text-text-secondary-dark">
           {events.length} events
         </span>
+        {liveCount > 0 && (
+          <span className="text-[11px] font-semibold text-primary">
+            +{liveCount} new
+          </span>
+        )}
         <button
-          onClick={() => fetchEvents(1, true)}
-          className="text-[11px] text-neutral-600 hover:text-neutral-400 transition-colors"
+          onClick={load}
+          className="ml-auto text-[11px] text-text-secondary-light dark:text-text-secondary-dark hover:text-primary transition-colors flex items-center gap-1"
         >
+          <span className="material-icons text-[14px]">refresh</span>
           Refresh
         </button>
+      </div>
+
+      {/* Column headers */}
+      <div className="flex items-center gap-4 px-5 py-2 border-b border-google-border bg-slate-50 dark:bg-slate-800/50 shrink-0 text-[10px] font-semibold uppercase tracking-widest text-text-secondary-light dark:text-text-secondary-dark">
+        <span className="w-[68px]">Time</span>
+        <span className="w-[148px]">Event</span>
+        <span className="w-[160px]">Identity</span>
+        <span className="flex-1">Context</span>
+        <span className="w-12 text-right">Score Δ</span>
+        <span className="w-16 text-right">When</span>
+        <span className="w-5" />
+      </div>
+
+      {/* Event rows */}
+      <div className="flex-1 overflow-y-auto">
+        {events.length === 0 ? (
+          <EmptyState
+            icon="bolt"
+            title="No events yet"
+            description="Send your first event using the SDK or Integrations page"
+          />
+        ) : (
+          events.map((evt, i) => (
+            <EventRow
+              key={evt._id || evt.id || i}
+              event={evt}
+              selected={selectedEvent?._id === evt._id}
+              onClick={() => onSelectEvent(evt)}
+            />
+          ))
+        )}
+        <div ref={bottomRef} />
       </div>
     </div>
   );

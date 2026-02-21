@@ -1,42 +1,27 @@
-/**
- * events.api.js — Event stream and session endpoints.
- */
-import api from "../../api/axios.config";
+import api from "../../shared/api/axios.js";
 
 export const eventsApi = {
-  // List events with filters
-  getAll: async (params = {}) => {
-    const response = await api.get("/events", { params });
-    return response.data;
+  /** GET /api/events — list recent raw events */
+  list: async (params = {}) => {
+    const r = await api.get("/events", { params });
+    return r.data;
   },
 
-  // Get single event
+  /** GET /api/events/:id — single event */
   getById: async (id) => {
-    const response = await api.get(`/events/${id}`);
-    return response.data;
+    const r = await api.get(`/events/${id}`);
+    return r.data;
   },
 
-  // Get full session timeline
-  getSession: async (sessionId) => {
-    const response = await api.get(`/events/session/${sessionId}`);
-    return response.data;
+  /** GET /api/leads/:leadId/timeline — session timeline for a lead */
+  getSession: async (leadId) => {
+    const r = await api.get(`/leads/${leadId}/timeline`);
+    return r.data;
   },
 
-  // Get recent events (for live feed)
-  getRecent: async (limit = 50) => {
-    const response = await api.get("/events", { params: { limit, sort: "-createdAt" } });
-    return response.data;
-  },
-
-  // Create manual event (for testing)
-  create: async (eventData) => {
-    const response = await api.post("/events", eventData);
-    return response.data;
-  },
-
-  // Get by lead
-  getByLead: async (leadId, params = {}) => {
-    const response = await api.get("/events", { params: { leadId, ...params } });
-    return response.data;
+  /** POST /api/events/ingest — push a new event */
+  ingest: async (payload) => {
+    const r = await api.post("/events/ingest", payload);
+    return r.data;
   },
 };

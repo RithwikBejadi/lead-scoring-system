@@ -1,51 +1,83 @@
-/**
- * JsonViewer — syntax-highlighted JSON display.
- */
-import { useState } from "react";
+import React, { useState } from "react";
 
-function colorize(json) {
-  if (typeof json !== "string") {
-    json = JSON.stringify(json, null, 2);
-  }
-  return json
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(
-      /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
-      (match) => {
-        let cls = "text-blue-400"; // number
-        if (/^"/.test(match)) {
-          if (/:$/.test(match)) cls = "text-neutral-300"; // key
-          else cls = "text-emerald-400"; // string
-        } else if (/true|false/.test(match)) cls = "text-amber-400"; // bool
-        else if (/null/.test(match)) cls = "text-red-400"; // null
-        return `<span class="${cls}">${match}</span>`;
-      }
+function JsonNode({ data, depth = 0 }) {
+  const [collapsed, setCollapsed] = useState(depth > 2);
+
+  if (data === null) return <span className="text-slate-400">null</span>;
+  if (typeof data === "boolean")
+    return <span className="text-amber-400">{String(data)}</span>;
+  if (typeof data === "number")
+    return <span className="text-blue-400">{data}</span>;
+  if (typeof data === "string")
+    return <span className="text-emerald-400">"{data}"</span>;
+
+  if (Array.isArray(data)) {
+    if (data.length === 0) return <span className="text-slate-400">[]</span>;
+    return (
+      <span>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="text-slate-400 hover:text-white"
+        >
+          {collapsed ? `▶ [${data.length}]` : "▼ ["}
+        </button>
+        {!collapsed && (
+          <>
+            {data.map((v, i) => (
+              <div key={i} style={{ paddingLeft: 16 }}>
+                <JsonNode data={v} depth={depth + 1} />
+                {i < data.length - 1 && (
+                  <span className="text-slate-600">,</span>
+                )}
+              </div>
+            ))}
+            <span className="text-slate-400">]</span>
+          </>
+        )}
+      </span>
     );
+  }
+
+  if (typeof data === "object") {
+    const keys = Object.keys(data);
+    if (keys.length === 0)
+      return <span className="text-slate-400">{"{}"}</span>;
+    return (
+      <span>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="text-slate-400 hover:text-white"
+        >
+          {collapsed ? `▶ {${keys.length}}` : "▼ {"}
+        </button>
+        {!collapsed && (
+          <>
+            {keys.map((k, i) => (
+              <div key={k} style={{ paddingLeft: 16 }}>
+                <span className="text-blue-300">"{k}"</span>
+                <span className="text-slate-400">: </span>
+                <JsonNode data={data[k]} depth={depth + 1} />
+                {i < keys.length - 1 && (
+                  <span className="text-slate-600">,</span>
+                )}
+              </div>
+            ))}
+            <span className="text-slate-400">{"}"}</span>
+          </>
+        )}
+      </span>
+    );
+  }
+
+  return <span className="text-slate-300">{String(data)}</span>;
 }
 
-export function JsonViewer({ data, collapsed = false }) {
-  const [open, setOpen] = useState(!collapsed);
-  const json = JSON.stringify(data, null, 2);
-
+export default function JsonViewer({ data, className = "" }) {
   return (
-    <div className="rounded bg-[#0d0d0d] border border-white/5 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/5">
-        <span className="text-[10px] font-mono text-neutral-500">JSON</span>
-        <button
-          onClick={() => setOpen(p => !p)}
-          className="text-[10px] text-neutral-500 hover:text-neutral-300 transition-colors"
-        >
-          {open ? "collapse" : "expand"}
-        </button>
-      </div>
-      {open && (
-        <pre
-          className="text-xs font-mono p-3 overflow-auto max-h-80 leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: colorize(json) }}
-        />
-      )}
-    </div>
+    <pre
+      className={`bg-slate-950 text-slate-300 text-[11px] font-mono p-4 rounded-lg overflow-auto leading-relaxed ${className}`}
+    >
+      <JsonNode data={data} depth={0} />
+    </pre>
   );
 }
