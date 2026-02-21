@@ -138,13 +138,40 @@ const getMe = async (req, res) => {
 const getMyProject = async (req, res) => {
   try {
     const Project = require("../projects/project.model");
-    const project = await Project.findById(req.user.projectId);
+    const User = require("../../models/User");
+    const { generateApiKey } = require("../../utils/generateApiKey");
 
+    let project = null;
+
+    // Try fetching the project linked to this user's token
+    if (req.user.projectId) {
+      project = await Project.findById(req.user.projectId);
+    }
+
+    // If no project found (deleted, or old user pre-project creation),
+    // auto-create a default one and link it to the user
     if (!project) {
-      return res.status(404).json({
-        success: false,
-        error: "Project not found",
-      });
+      const user = await User.findById(req.user.userId);
+      if (!user) {
+        return res.status(401).json({ success: false, error: "User not found" });
+      }
+
+      // Check if user already has a projectId pointing somewhere else
+      if (user.projectId) {
+        project = await Project.findById(user.projectId);
+      }
+
+      if (!project) {
+        project = await Project.create({
+          name: user.name ? `${user.name}'s Project` : "My Project",
+          apiKey: generateApiKey(),
+          domain: "example.com",
+          active: true,
+        });
+
+        user.projectId = project._id;
+        await user.save();
+      }
     }
 
     res.json({
