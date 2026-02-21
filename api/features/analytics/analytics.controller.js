@@ -6,18 +6,7 @@
 const Lead = require("../../models/Lead");
 const Event = require("../../models/Event");
 const Queue = require("bull");
-// Redis configuration for Bull
-const redisOptions = {
-  host: process.env.REDIS_HOST || "127.0.0.1",
-  port: Number(process.env.REDIS_PORT) || 6379,
-  password: process.env.REDIS_PASSWORD || undefined,
-  tls: process.env.REDIS_TLS === "true" ? {} : undefined,
-};
-
-// Initialize Bull queue for health monitoring
-const scoringQueue = new Queue("lead-processing", {
-  redis: redisOptions,
-});
+const scoringQueue = require("../../../shared/queue");
 
 /**
  * GET /api/analytics/dashboard
@@ -178,7 +167,7 @@ exports.getQueueHealth = async (req, res, next) => {
         active,
         completed,
         failed,
-        workers: 4, 
+        workers: 4,
         maxWorkers: 12,
       },
     });

@@ -1,23 +1,10 @@
 const Queue = require("bull");
 
-// Phase 1.3: Robust Redis Configuration for Queue
-const redisConfig = {
-  host: process.env.REDIS_HOST || "127.0.0.1",
-  port: Number(process.env.REDIS_PORT) || 6379,
-  password: process.env.REDIS_PASSWORD || undefined,
-  tls: process.env.REDIS_TLS === "true" ? {} : undefined,
-  maxRetriesPerRequest: null,
-  enableReadyCheck: false,
-};
-
-const eventQueue = new Queue("lead-processing", {
-  redis: redisConfig,
-
+const queueOpts = {
   limiter: {
     max: 200,
     duration: 1000,
   },
-
   defaultJobOptions: {
     attempts: 5,
     backoff: { type: "exponential", delay: 3000 },
@@ -25,13 +12,39 @@ const eventQueue = new Queue("lead-processing", {
     removeOnFail: false,
     timeout: 60000,
   },
-
   settings: {
     stalledInterval: 30000,
     maxStalledCount: 2,
     lockDuration: 30000,
   },
-});
+};
+
+let eventQueue;
+
+if (process.env.REDIS_URL) {
+  // Use connection string for Upstash TLS connection
+  eventQueue = new Queue("lead-processing", process.env.REDIS_URL, {
+    ...queueOpts,
+    redis: {
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+      tls: { rejectUnauthorized: false }, // Required for Upstash
+    },
+  });
+} else {
+  // Fallback piecemeal configuration
+  eventQueue = new Queue("lead-processing", {
+    ...queueOpts,
+    redis: {
+      host: process.env.REDIS_HOST || "127.0.0.1",
+      port: Number(process.env.REDIS_PORT) || 6379,
+      password: process.env.REDIS_PASSWORD || undefined,
+      tls: process.env.REDIS_TLS === "true" ? {} : undefined,
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+    },
+  });
+}
 
 // ─── Observability Hooks ────────────────────────────────
 

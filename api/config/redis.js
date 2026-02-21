@@ -6,21 +6,31 @@
 const Redis = require("ioredis");
 
 // Robust Redis configuration (Phase 1.3)
-const redisConfig = {
-  host: process.env.REDIS_HOST || "127.0.0.1",
-  port: Number(process.env.REDIS_PORT) || 6379,
-  password: process.env.REDIS_PASSWORD || undefined,
-  // TLS check: if explicitly true or if port is 6380 (Azure default)
-  tls: process.env.REDIS_TLS === "true" ? {} : undefined,
-  retryStrategy: (times) => {
-    // Exponential backoff
-    const delay = Math.min(times * 50, 2000);
-    return delay;
-  },
-  maxRetriesPerRequest: null, // Required for Bull compatibility (though this client is for rate limiting)
+const retryStrategy = (times) => {
+  // Exponential backoff
+  const delay = Math.min(times * 50, 2000);
+  return delay;
 };
 
-const redisClient = new Redis(redisConfig);
+let redisClient;
+
+if (process.env.REDIS_URL) {
+  // Use connection string directly (e.g. rediss://default:pwd@host:port)
+  redisClient = new Redis(process.env.REDIS_URL, {
+    maxRetriesPerRequest: null,
+    retryStrategy,
+  });
+} else {
+  // Fallback to legacy piecemeal env variables
+  redisClient = new Redis({
+    host: process.env.REDIS_HOST || "127.0.0.1",
+    port: Number(process.env.REDIS_PORT) || 6379,
+    password: process.env.REDIS_PASSWORD || undefined,
+    tls: process.env.REDIS_TLS === "true" ? {} : undefined,
+    retryStrategy,
+    maxRetriesPerRequest: null,
+  });
+}
 
 redisClient.on("error", (err) => {
   console.error("Redis Client Error", err);
