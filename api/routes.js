@@ -27,18 +27,29 @@ router.get("/health", async (req, res) => {
 // Auth routes (public)
 router.use("/auth", require("./features/auth/auth.routes"));
 
-// Feature routes
-router.use("/events", require("./features/events/event.routes"));
-router.use("/leads", require("./features/leads/lead.routes"));
+// Feature routes (protected)
+const { protect } = require("./middleware/authMiddleware");
+
+router.use("/events", protect, require("./features/events/event.routes"));
+router.use("/leads", protect, require("./features/leads/lead.routes"));
 router.use(
   "/leaderboard",
+  protect,
   require("./features/leaderboard/leaderboard.routes"),
 );
-router.use("/rules", require("./features/rules/rules.routes"));
-router.use("/webhooks", require("./features/webhooks/webhook.routes"));
-router.use("/ingest", require("./features/ingest/ingest.routes")); // Public ingestion
-router.use("/projects", require("./features/projects/project.routes"));
-router.use("/analytics", require("./features/analytics/analytics.routes"));
+router.use("/rules", protect, require("./features/rules/rules.routes"));
+router.use(
+  "/analytics",
+  protect,
+  require("./features/analytics/analytics.routes"),
+);
+router.use("/projects", protect, require("./features/projects/project.routes"));
+
+// Admin routes (has its own protect + admin check inside)
 router.use("/admin", require("./features/admin/admin.routes"));
+
+// Public webhooks and ingestion (no JWT required)
+router.use("/webhooks", require("./features/webhooks/webhook.routes"));
+router.use("/ingest", require("./features/ingest/ingest.routes"));
 
 module.exports = router;
