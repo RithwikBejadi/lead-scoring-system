@@ -221,7 +221,9 @@ export default function RulesPage() {
     setLoading(true);
     try {
       const r = await rulesApi.getAll();
-      setRules(r?.data?.rules || r?.data || r?.rules || []);
+      setRules(
+        Array.isArray(r) ? r : r?.data?.rules || r?.data || r?.rules || [],
+      );
     } catch {
       setRules([]);
     } finally {
