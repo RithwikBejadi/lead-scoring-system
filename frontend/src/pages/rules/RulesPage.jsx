@@ -247,6 +247,7 @@ export default function RulesPage() {
       load();
     } catch (err) {
       console.error("Failed to create rule:", err);
+      throw err; // Added this so RuleEditor can show the red error box
     }
   };
 
@@ -257,6 +258,7 @@ export default function RulesPage() {
       load();
     } catch (err) {
       console.error("Failed to update rule:", err);
+      throw err; // Added this so RuleEditor can show the red error box
     }
   };
 
