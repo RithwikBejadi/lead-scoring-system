@@ -24,15 +24,28 @@ function RuleEditor({ rule, onSave, onCancel }) {
   });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleSave = async () => {
     setSaving(true);
-    await onSave(form);
-    setSaving(false);
+    setError(null);
+    try {
+      await onSave(form);
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to save rule");
+    } finally {
+      if (!error) setSaving(false); // only set to false if no error to allow fixing
+    }
   };
 
   return (
     <div className="bg-slate-50 dark:bg-slate-800/60 rounded-lg p-4 space-y-3 border border-google-border">
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs px-3 py-2 rounded border border-red-200 dark:border-red-800 flex items-center gap-1.5">
+          <span className="material-icons text-[14px]">error_outline</span>
+          {error}
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-[11px] font-medium text-text-secondary-light dark:text-text-secondary-dark block mb-1">
@@ -41,7 +54,8 @@ function RuleEditor({ rule, onSave, onCancel }) {
           <select
             value={form.eventType}
             onChange={(e) => set("eventType", e.target.value)}
-            className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-google-border rounded focus:ring-2 focus:ring-primary/50 text-text-primary-light dark:text-text-primary-dark"
+            disabled={!!rule} // Disable editing eventType for existing rules
+            className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-google-border rounded focus:ring-2 focus:ring-primary/50 text-text-primary-light dark:text-text-primary-dark disabled:opacity-50"
           >
             <option value="">Select event...</option>
             {EVENT_TYPES.map((t) => (
