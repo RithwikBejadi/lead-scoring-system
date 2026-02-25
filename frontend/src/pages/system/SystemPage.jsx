@@ -41,18 +41,22 @@ export default function SystemPage() {
   const [queue, setQueue] = useState(null);
   const [health, setHealth] = useState({});
   const [failed, setFailed] = useState([]);
+  const [throughput, setThroughput] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      const [qr, hr] = await Promise.allSettled([
+      const [qr, hr, tr] = await Promise.allSettled([
         analyticsApi.getQueueHealth(),
         api.get("/health"),
+        analyticsApi.getThroughputData(1).catch(() => null),
       ]);
       if (qr.status === "fulfilled" && qr.value?.success)
         setQueue(qr.value.data);
       if (hr.status === "fulfilled")
         setHealth(hr.value?.data?.data || hr.value?.data || {});
+      if (tr.status === "fulfilled" && tr.value)
+        setThroughput(tr.value?.data || tr.value);
     } catch {
     } finally {
       setLoading(false);
@@ -145,6 +149,70 @@ export default function SystemPage() {
               </Panel>
             );
           })}
+        </div>
+
+        {/* Worker Performance row */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[
+            {
+              label: "Queue Depth",
+              value: queue?.waiting != null ? queue.waiting : "—",
+              sub: "jobs waiting",
+              icon: "queue",
+              warn: queue?.waiting > 100,
+            },
+            {
+              label: "Active Jobs",
+              value: queue?.active != null ? queue.active : "—",
+              sub: "processing now",
+              icon: "bolt",
+              ok: (queue?.active || 0) > 0,
+            },
+            {
+              label: "Worker Concurrency",
+              value: queue ? `${queue.workers ?? 1} / ${queue.maxWorkers ?? 4}` : "—",
+              sub: "slots used",
+              icon: "settings_suggest",
+            },
+            {
+              label: "Ingestion Rate",
+              value: throughput?.eventsPerHour != null
+                ? `${throughput.eventsPerHour}/hr`
+                : throughput?.total != null
+                  ? `${throughput.total}/hr`
+                  : "—",
+              sub: "events (last hour)",
+              icon: "upload",
+            },
+          ].map((m) => (
+            <div
+              key={m.label}
+              className={`rounded-lg border p-4 ${
+                m.warn
+                  ? "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/10"
+                  : "border-google-border bg-surface-light dark:bg-surface-dark"
+              }`}
+            >
+              <div className="flex items-center gap-1.5 mb-2">
+                <span
+                  className={`material-icons text-[16px] ${
+                    m.warn ? "text-amber-500" : "text-text-secondary-light dark:text-text-secondary-dark"
+                  }`}
+                >
+                  {m.icon}
+                </span>
+                <span className="text-[10px] font-semibold text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">
+                  {m.label}
+                </span>
+              </div>
+              <p className="font-mono text-xl font-bold text-text-primary-light dark:text-text-primary-dark">
+                {m.value}
+              </p>
+              <p className="text-[10px] text-text-secondary-light dark:text-text-secondary-dark mt-0.5">
+                {m.sub}
+              </p>
+            </div>
+          ))}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -6,6 +6,7 @@
 import { useState } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import DebugOverlay from "../../components/debug/DebugOverlay.jsx";
 
 export default function AppShell({ children }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -20,6 +21,9 @@ export default function AppShell({ children }) {
           {children}
         </main>
       </div>
+
+      {/* System debug overlay — auto-visible in dev, ?debug=1 in prod */}
+      <DebugOverlay />
     </div>
   );
 }

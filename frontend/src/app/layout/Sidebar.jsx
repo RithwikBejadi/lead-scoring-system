@@ -5,20 +5,18 @@ import { useAuth } from "../../contexts/AuthContext";
 const nav = [
   {
     group: null,
-    items: [{ path: "/overview", icon: "dashboard", label: "Overview" }],
-  },
-  {
-    group: "Data",
     items: [
-      { path: "/events", icon: "bolt", label: "Events" },
+      { path: "/command", icon: "hub", label: "Command Center" },
+      { path: "/pipeline", icon: "view_kanban", label: "Pipeline" },
       { path: "/leads", icon: "people", label: "Leads" },
+      { path: "/activity", icon: "timeline", label: "Activity" },
     ],
   },
   {
     group: "Configure",
     items: [
-      { path: "/rules", icon: "rule", label: "Rules" },
       { path: "/automations", icon: "auto_fix_high", label: "Automations" },
+      { path: "/rules", icon: "rule", label: "Rules & Scoring" },
     ],
   },
   {

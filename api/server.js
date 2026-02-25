@@ -23,9 +23,9 @@ async function startServer() {
 
       // Phase 2.1: NODE_ENV Enforcement
       if (process.env.NODE_ENV !== "production") {
-        console.warn("⚠️  Running in non-production mode");
+        console.warn("Running in non-production mode");
       } else {
-        console.log("✅ Running in production mode");
+        console.log("Running in production mode");
       }
 
       console.log(`Socket.IO enabled on port ${PORT}`);

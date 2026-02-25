@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { leadsApi } from "../../api/leads.api.js";
 import { Panel, PanelHeader, EmptyState } from "../../shared/ui/Panel.jsx";
 import Badge from "../../shared/ui/Badge.jsx";
 import Spinner from "../../shared/ui/Spinner.jsx";
-import IntelligenceDrawer from "../../components/leads/IntelligenceDrawer.jsx";
 
 function relTime(ts) {
   if (!ts) return "—";
@@ -21,12 +21,28 @@ function stageFor(score) {
   return { label: "Cold", variant: "default" };
 }
 
+function velocityFor(lead) {
+  const v = lead.velocity || lead.velocityScore || 0;
+  if (v > 60) return { icon: "trending_up", color: "text-emerald-500", label: "High" };
+  if (v > 30) return { icon: "trending_flat", color: "text-amber-500", label: "Med" };
+  return { icon: "trending_down", color: "text-slate-400", label: "Low" };
+}
+
+function riskFor(lead) {
+  const daysSince = lead.lastEventAt
+    ? (Date.now() - new Date(lead.lastEventAt)) / 86400000
+    : Infinity;
+  if (daysSince > 14) return { icon: "warning", color: "text-red-500", label: "High risk" };
+  if (daysSince > 7) return { icon: "schedule", color: "text-amber-500", label: "Cooling" };
+  return { icon: "check_circle", color: "text-emerald-500", label: "Active" };
+}
+
 export default function LeadsPage() {
+  const navigate = useNavigate();
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [stage, setStage] = useState("all");
-  const [selected, setSelected] = useState(null);
   const [sortBy, setSortBy] = useState("score"); // "score" | "activity"
 
   const load = useCallback(async () => {
@@ -154,8 +170,9 @@ export default function LeadsPage() {
                 <th className="px-6 py-3">Identity</th>
                 <th className="px-6 py-3">Score</th>
                 <th className="px-6 py-3">Stage</th>
+                <th className="px-6 py-3">Velocity</th>
+                <th className="px-6 py-3">Risk</th>
                 <th className="px-6 py-3">Events</th>
-                <th className="px-6 py-3">First Seen</th>
                 <th className="px-6 py-3">Last Active</th>
                 <th className="px-6 py-3 w-8" />
               </tr>
@@ -163,6 +180,12 @@ export default function LeadsPage() {
             <tbody className="divide-y divide-google-border">
               {filtered.map((lead) => {
                 const stage = stageFor(lead.currentScore || 0);
+                const vel = velocityFor(lead);
+                const risk = riskFor(lead);
+                const score = lead.currentScore || 0;
+                // Approximate delta from velocity
+                const velNum = lead.velocity || lead.velocityScore || 0;
+                const approxDelta = velNum > 0 ? Math.round(velNum * 0.4) : null;
                 const name =
                   lead.name ||
                   lead.email ||
@@ -171,8 +194,8 @@ export default function LeadsPage() {
                 return (
                   <tr
                     key={lead._id}
-                    onClick={() => setSelected(lead)}
-                    className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer group transition-colors ${selected?._id === lead._id ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}
+                    onClick={() => navigate(`/leads/${lead._id}`)}
+                    className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer group transition-colors"
                   >
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3">
@@ -180,10 +203,10 @@ export default function LeadsPage() {
                           {initials}
                         </div>
                         <div>
-                          <p className="font-medium text-text-primary-light dark:text-text-primary-dark">
+                          <p className="font-medium text-text-primary-light dark:text-text-primary-dark group-hover:text-primary transition-colors">
                             {name}
                           </p>
-                          {lead.email && (
+                          {lead.email && lead.name && (
                             <p className="text-[10px] text-text-secondary-light dark:text-text-secondary-dark">
                               {lead.email}
                             </p>
@@ -199,19 +222,42 @@ export default function LeadsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-3 font-bold text-text-primary-light dark:text-text-primary-dark">
-                      {lead.currentScore || 0}
+                    <td className="px-6 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-sm text-text-primary-light dark:text-text-primary-dark">
+                          {score}
+                        </span>
+                        {approxDelta != null && approxDelta > 0 && (
+                          <span className="text-[10px] font-semibold text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded">
+                            +{approxDelta}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-3">
                       <Badge variant={stage.variant} size="sm">
                         {stage.label}
                       </Badge>
                     </td>
-                    <td className="px-6 py-3 text-text-secondary-light dark:text-text-secondary-dark">
-                      {lead.eventsCount || lead.totalEvents || "—"}
+                    <td className="px-6 py-3">
+                      <span
+                        className={`flex items-center gap-1 text-[11px] font-semibold ${vel.color}`}
+                        title={vel.label}
+                      >
+                        <span className="material-icons text-[14px]">{vel.icon}</span>
+                        {vel.label}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3">
+                      <span
+                        className={`material-icons text-[16px] ${risk.color}`}
+                        title={risk.label}
+                      >
+                        {risk.icon}
+                      </span>
                     </td>
                     <td className="px-6 py-3 text-text-secondary-light dark:text-text-secondary-dark">
-                      {relTime(lead.createdAt || lead.firstSeenAt)}
+                      {lead.eventsCount || lead.totalEvents || "—"}
                     </td>
                     <td className="px-6 py-3 text-text-secondary-light dark:text-text-secondary-dark">
                       {relTime(lead.lastEventAt)}
@@ -228,13 +274,6 @@ export default function LeadsPage() {
           </table>
         )}
       </div>
-
-      {/* Intelligence Drawer (reuse existing) */}
-      <IntelligenceDrawer
-        open={!!selected}
-        lead={selected}
-        onClose={() => setSelected(null)}
-      />
     </div>
   );
 }

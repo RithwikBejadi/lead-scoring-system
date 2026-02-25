@@ -20,7 +20,6 @@ async function getEvents(req, res, next) {
       query.eventType = eventType;
     }
 
-    // Since we also want lead info, let's populate
     const events = await Event.find(query)
       .sort({ timestamp: -1 })
       .limit(Number(limit))

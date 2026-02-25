@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { rulesApi } from "../../features/rules/rules.api.js";
+import { leadsApi } from "../../api/leads.api.js";
 import { Panel, PanelHeader, EmptyState } from "../../shared/ui/Panel.jsx";
 import Badge from "../../shared/ui/Badge.jsx";
 import Spinner from "../../shared/ui/Spinner.jsx";
@@ -210,8 +211,152 @@ function RuleSimulator({ rules }) {
   );
 }
 
+// ─── Impact Simulator ────────────────────────────────────────────────────────
+
+function ImpactSimulator({ rules, leads }) {
+  const [targetEvent, setTargetEvent] = useState("");
+  const [newPoints, setNewPoints] = useState(0);
+  const [result, setResult] = useState(null);
+
+  const simulate = () => {
+    if (!targetEvent) return;
+    const rule = rules.find((r) => (r.eventType || r.event) === targetEvent);
+    const currentPoints = rule?.points ?? rule?.scoreIncrement ?? 0;
+    const delta = newPoints - currentPoints;
+
+    if (delta === 0) {
+      setResult({ delta: 0, message: "No change — same point value" });
+      return;
+    }
+
+    // Re-score each lead with the delta and count stage changes
+    const before = { Cold: 0, Warm: 0, Hot: 0, Qualified: 0 };
+    const after = { Cold: 0, Warm: 0, Hot: 0, Qualified: 0 };
+
+    const stageFor = (s) => {
+      if (s >= 85) return "Qualified";
+      if (s >= 70) return "Hot";
+      if (s >= 40) return "Warm";
+      return "Cold";
+    };
+
+    leads.forEach((lead) => {
+      const score = lead.currentScore || 0;
+      // Approximate events count for this type from lead data (rough)
+      const eventCount = 1; // conservative: assume they have at least 1
+      const newScore = Math.min(100, Math.max(0, score + delta * eventCount));
+      before[stageFor(score)]++;
+      after[stageFor(newScore)]++;
+    });
+
+    setResult({ before, after, delta, currentPoints, newPoints, targetEvent });
+  };
+
+  const matchingRule = rules.find((r) => (r.eventType || r.event) === targetEvent);
+
+  return (
+    <Panel noPad>
+      <PanelHeader
+        title="Impact Simulator"
+        subtitle="See how changing a rule affects the pipeline"
+      />
+      <div className="p-4 space-y-3">
+        <div>
+          <label className="text-[11px] font-medium text-text-secondary-light dark:text-text-secondary-dark block mb-1">
+            Rule to change
+          </label>
+          <select
+            value={targetEvent}
+            onChange={(e) => {
+              setTargetEvent(e.target.value);
+              const r = rules.find((r) => (r.eventType || r.event) === e.target.value);
+              if (r) setNewPoints(r.points ?? r.scoreIncrement ?? 0);
+              setResult(null);
+            }}
+            className="w-full px-3 py-2 text-xs bg-slate-100 dark:bg-slate-800 border-none rounded"
+          >
+            <option value="">Select rule…</option>
+            {rules.map((r) => (
+              <option key={r._id} value={r.eventType || r.event}>
+                {r.eventType || r.event} ({r.points ?? r.scoreIncrement ?? 0} pts)
+              </option>
+            ))}
+          </select>
+        </div>
+        {targetEvent && matchingRule && (
+          <div>
+            <label className="text-[11px] font-medium text-text-secondary-light dark:text-text-secondary-dark block mb-1">
+              New point value (currently {matchingRule.points ?? matchingRule.scoreIncrement ?? 0})
+            </label>
+            <input
+              type="number"
+              value={newPoints}
+              onChange={(e) => { setNewPoints(Number(e.target.value)); setResult(null); }}
+              className="w-full px-3 py-2 text-xs bg-slate-100 dark:bg-slate-800 border-none rounded"
+            />
+          </div>
+        )}
+        <button
+          onClick={simulate}
+          disabled={!targetEvent || leads.length === 0}
+          className="w-full py-2 bg-primary text-white text-xs font-semibold rounded hover:bg-blue-600 transition-colors disabled:opacity-40"
+        >
+          Simulate Impact
+        </button>
+
+        {result && !result.message && (
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">
+              Pipeline impact ({leads.length} leads)
+            </p>
+            {Object.keys(result.before).map((stage) => {
+              const b = result.before[stage];
+              const a = result.after[stage];
+              const diff = a - b;
+              return (
+                <div key={stage} className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-text-secondary-light dark:text-text-secondary-dark w-20">
+                    {stage}
+                  </span>
+                  <span className="font-mono text-xs text-text-primary-light dark:text-text-primary-dark">
+                    {b}
+                  </span>
+                  <span className="material-icons text-[12px] text-text-secondary-light dark:text-text-secondary-dark">
+                    arrow_forward
+                  </span>
+                  <span className="font-mono text-xs font-bold text-text-primary-light dark:text-text-primary-dark">
+                    {a}
+                  </span>
+                  {diff !== 0 && (
+                    <span
+                      className={`text-[10px] font-bold ml-auto ${
+                        diff > 0 ? "text-emerald-500" : "text-red-500"
+                      }`}
+                    >
+                      {diff > 0 ? `+${diff}` : diff}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {result?.message && (
+          <p className="text-[11px] text-amber-500">{result.message}</p>
+        )}
+        {leads.length === 0 && (
+          <p className="text-[11px] text-text-secondary-light dark:text-text-secondary-dark text-center">
+            No lead data — impact simulation unavailable
+          </p>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
 export default function RulesPage() {
   const [rules, setRules] = useState([]);
+  const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -220,10 +365,18 @@ export default function RulesPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const r = await rulesApi.getAll();
-      setRules(
-        Array.isArray(r) ? r : r?.data?.rules || r?.data || r?.rules || [],
-      );
+      const [rr, lr] = await Promise.allSettled([
+        rulesApi.getAll(),
+        leadsApi.getAll({ limit: 500 }),
+      ]);
+      if (rr.status === "fulfilled") {
+        const r = rr.value;
+        setRules(Array.isArray(r) ? r : r?.data?.rules || r?.data || r?.rules || []);
+      }
+      if (lr.status === "fulfilled") {
+        const l = lr.value;
+        setLeads(l?.data?.leads || l?.data || l?.leads || []);
+      }
     } catch {
       setRules([]);
     } finally {
@@ -394,9 +547,10 @@ export default function RulesPage() {
             )}
           </div>
 
-          {/* Simulator */}
-          <div>
+          {/* Simulators */}
+          <div className="space-y-4">
             <RuleSimulator rules={rules} />
+            <ImpactSimulator rules={rules} leads={leads} />
           </div>
         </div>
       </div>
