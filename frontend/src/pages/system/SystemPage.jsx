@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { analyticsApi } from "../../api/analytics.api.js";
-import { Panel, PanelHeader, EmptyState } from "../../shared/ui/Panel.jsx";
-import Badge from "../../shared/ui/Badge.jsx";
-import Spinner from "../../shared/ui/Spinner.jsx";
-import api from "../../shared/api/axios.js";
+import { Panel, PanelHeader, EmptyState } from "../../components/ui/Panel.jsx";
+import Badge from "../../components/ui/Badge.jsx";
+import Spinner from "../../components/ui/Spinner.jsx";
+import api from "../../api/client.js";
 
 function ProgressBar({ value, max, color = "bg-primary" }) {
   const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;

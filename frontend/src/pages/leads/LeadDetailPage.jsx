@@ -20,10 +20,10 @@ import {
   CartesianGrid,
 } from "recharts";
 import { leadsApi } from "../../api/leads.api.js";
-import { eventsApi } from "../../features/events/events.api.js";
-import { Panel, PanelHeader } from "../../shared/ui/Panel.jsx";
-import Badge from "../../shared/ui/Badge.jsx";
-import Spinner from "../../shared/ui/Spinner.jsx";
+import { eventsApi } from "../../api/events.api.js";
+import { Panel, PanelHeader } from "../../components/ui/Panel.jsx";
+import Badge from "../../components/ui/Badge.jsx";
+import Spinner from "../../components/ui/Spinner.jsx";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 

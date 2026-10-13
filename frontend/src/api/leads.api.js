@@ -1,9 +1,9 @@
 /**
- * FILE: api/leads.api.js
+ * FILE: frontend/src/api/leads.api.js
  * PURPOSE: Lead management API client
  */
 
-import api from "./axios.config";
+import api from "./client";
 
 export const leadsApi = {
   /**

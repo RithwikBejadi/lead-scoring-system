@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { leadsApi } from "../../api/leads.api.js";
-import { Panel, PanelHeader, EmptyState } from "../../shared/ui/Panel.jsx";
-import Badge from "../../shared/ui/Badge.jsx";
-import Spinner from "../../shared/ui/Spinner.jsx";
+import { Panel, PanelHeader, EmptyState } from "../../components/ui/Panel.jsx";
+import Badge from "../../components/ui/Badge.jsx";
+import Spinner from "../../components/ui/Spinner.jsx";
 
 function relTime(ts) {
   if (!ts) return "—";

@@ -1,5 +1,5 @@
 /**
- * FILE: config.js
+ * FILE: frontend/src/config.js
  * PURPOSE: Environment configuration for API and WebSocket URLs
  */
 

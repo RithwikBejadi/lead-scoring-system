@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Panel, PanelHeader } from "../../shared/ui/Panel.jsx";
-import Badge from "../../shared/ui/Badge.jsx";
-import api from "../../shared/api/axios.js";
+import { Panel, PanelHeader } from "../../components/ui/Panel.jsx";
+import Badge from "../../components/ui/Badge.jsx";
+import api from "../../api/client.js";
 
 function CopyButton({ text }) {
   const [copied, setCopied] = useState(false);

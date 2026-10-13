@@ -1,9 +1,9 @@
 /**
- * FILE: api/auth.api.js
+ * FILE: frontend/src/api/auth.api.js
  * PURPOSE: Authentication API client
  */
 
-import api from "./axios.config";
+import api from "./client";
 
 export const authApi = {
   /**

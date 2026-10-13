@@ -8,10 +8,10 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../../shared/api/axios.js";
+import api from "../../api/client.js";
 import { useAppStore } from "../../store/AppStore.jsx";
-import Badge from "../../shared/ui/Badge.jsx";
-import Spinner from "../../shared/ui/Spinner.jsx";
+import Badge from "../../components/ui/Badge.jsx";
+import Spinner from "../../components/ui/Spinner.jsx";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 

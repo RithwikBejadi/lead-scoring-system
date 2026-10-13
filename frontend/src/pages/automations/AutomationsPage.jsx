@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { analyticsApi } from "../../api/analytics.api.js";
-import { Panel, PanelHeader, EmptyState } from "../../shared/ui/Panel.jsx";
-import Badge from "../../shared/ui/Badge.jsx";
-import Spinner from "../../shared/ui/Spinner.jsx";
+import { Panel, PanelHeader, EmptyState } from "../../components/ui/Panel.jsx";
+import Badge from "../../components/ui/Badge.jsx";
+import Spinner from "../../components/ui/Spinner.jsx";
 
 function relTime(ts) {
   if (!ts) return "—";

@@ -225,16 +225,15 @@ npm run dev
 # 1. Start MongoDB and Redis
 docker-compose up mongo redis -d
 
-# 2. Start API
-cd api
-npm install
-cp .env.example .env
-npm start  # http://localhost:4000
+# 2. Install dependencies for every package (api, worker, frontend, shared/queue)
+npm run install:all
+cp .env.example api/.env && cp .env.example worker/.env
 
-# 3. Start Worker (new terminal)
-cd worker
-npm install
-npm start  # http://localhost:5000
+# 3. Start API
+npm run dev:api     # http://localhost:4000
+
+# 4. Start Worker (new terminal)
+npm run dev:worker  # http://localhost:5000
 
 # 4. Start Frontend (new terminal)
 cd frontend
@@ -258,61 +257,51 @@ npm run dev  # http://localhost:5173
 
 ```
 lead-scoring-system/
-├── api/                          # REST API Server
-│   ├── app.js                   # Express setup, Socket.IO
-│   ├── server.js                # Server initialization
-│   ├── routes.js                # Route aggregation
-│   ├── config/
-│   │   ├── db.js               # MongoDB connection
-│   │   └── redis.js            # Redis client
-│   ├── middleware/
-│   │   ├── authMiddleware.js   # JWT + API key validation
-│   │   ├── errorHandler.js     # Global error handling
-│   │   └── rateLimiter.js      # Rate limiting
-│   ├── features/               # Domain-driven modules
-│   │   ├── auth/              # Authentication
-│   │   ├── events/            # Event ingestion
-│   │   ├── leads/             # Lead management
-│   │   ├── leaderboard/       # Analytics
-│   │   ├── projects/          # Multi-tenancy
-│   │   ├── rules/             # Scoring rules
-│   │   └── webhooks/          # Webhook subscriptions
-│   ├── models/                 # Mongoose schemas
-│   └── sdk/                    # JavaScript SDK
-│
-├── worker/                       # Background Processor
-│   ├── index.js                # Worker initialization
-│   ├── workflows/
-│   │   └── processLeadWorkflow.js  # Core scoring logic
-│   ├── domain/
-│   │   ├── automationEngine.js     # Rule-based automation
-│   │   ├── leadIntelligence.js     # Metrics calculation
-│   │   └── stageEngine.js          # Stage progression
-│   ├── jobs/
-│   │   └── scoringDecay.job.js     # Scheduled decay
-│   ├── services/
-│   │   ├── eventProcessor.js       # Event utilities
-│   │   └── scoringRulesCache.js    # In-memory cache
-│   └── utils/
-│       ├── recoverLocks.js         # Stale lock cleanup
-│       └── logger.js               # Structured logging
-│
-├── shared/
-│   └── queue/                    # Bull queue configuration
-│
-├── frontend/                     # React SPA
+├── api/                              # REST API + Socket.IO
 │   ├── src/
-│   │   ├── pages/               # Route components
-│   │   ├── components/          # Reusable UI
-│   │   ├── contexts/            # State management
-│   │   ├── api/                 # API services
-│   │   ├── sockets/             # Socket.IO client
-│   │   └── api.js               # Axios client
+│   │   ├── server.js                 # Process entry (DB connect, listen, shutdown)
+│   │   ├── app.js                    # Express app, CORS, Socket.IO
+│   │   ├── routes.js                 # Route aggregation
+│   │   ├── config/                   # db.js, redis.js
+│   │   ├── middleware/               # auth, error handling, rate limiting
+│   │   ├── models/                   # Mongoose schemas (Lead, Event, Project, ...)
+│   │   ├── features/                 # One folder per domain: routes/controller/service
+│   │   │   ├── admin/  analytics/  auth/  events/  ingest/
+│   │   │   └── leaderboard/  leads/  projects/  rules/  webhooks/
+│   │   └── utils/
+│   ├── public/sdk/                   # Browser tracking SDK, served at /sdk
+│   ├── scripts/                      # Ops scripts (verify-invariants.js)
+│   └── Dockerfile
 │
-├── docker-compose.yml            # Orchestration
-├── ARCHITECTURE.md               # Detailed architecture docs
-├── DEPLOYMENT.md                 # Deployment guide
-└── README.md                     # This file
+├── worker/                           # Background scoring processor
+│   ├── src/
+│   │   ├── index.js                  # Queue consumer + health endpoint
+│   │   ├── config/
+│   │   ├── models/
+│   │   ├── workflows/                # processLeadWorkflow.js (core scoring)
+│   │   ├── domain/                   # automationEngine, leadIntelligence, stageEngine
+│   │   ├── services/                 # scoringRulesCache
+│   │   ├── jobs/                     # scoringDecay (not yet scheduled)
+│   │   └── utils/                    # logger, recoverLocks
+│   └── Dockerfile
+│
+├── shared/queue/                     # Bull queue shared by api + worker
+│
+├── frontend/                         # React SPA (Vite + Tailwind)
+│   └── src/
+│       ├── api/                      # Axios client + per-resource API modules
+│       ├── components/               # layout/, ui/, landing/, auth/
+│       ├── contexts/                 # Auth, Toast
+│       ├── store/                    # AppStore (global state)
+│       ├── sockets/                  # Socket.IO client
+│       └── pages/                    # One folder per route
+│
+├── tests/                            # Load / chaos / metrics scripts
+├── scripts/                          # mongo-init.js
+├── docs/                             # Architecture, onboarding, deployment
+├── docker-compose.yml
+├── render.yaml
+└── README.md
 ```
 
 ---
@@ -778,16 +767,12 @@ The project includes several verification scripts:
 
 ```bash
 # Verify system invariants
-./verify-invariants.js
-
-# Test event processing
-./verify-step1.sh
+npm --prefix api run verify:invariants
 
 # Load testing
-./verify-load.js
-
-# Production readiness check
-./verify-production-ingest.sh
+npm --prefix tests install
+node tests/verify-load.js http://localhost:4000
+npm --prefix tests run test:light
 ```
 
 ---
@@ -857,10 +842,11 @@ curl http://localhost:5000/health
 
 ## Documentation
 
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)**: Comprehensive architecture documentation
-- **[DEPLOYMENT.md](./DEPLOYMENT.md)**: Production deployment guide
-- **[USER_TESTING_GUIDE.md](./USER_TESTING_GUIDE.md)**: Testing and validation guide
-- **[CREDENTIALS_SETUP.md](./CREDENTIALS_SETUP.md)**: API credentials setup
+- **[docs/architecture.md](./docs/architecture.md)**: System architecture
+- **[docs/developer-onboarding.md](./docs/developer-onboarding.md)**: Developer onboarding guide
+- **[docs/code-walkthrough.md](./docs/code-walkthrough.md)**: Code walkthrough
+- **[docs/frontend-architecture.md](./docs/frontend-architecture.md)**: Frontend architecture
+- **[docs/deployment.md](./docs/deployment.md)**: Production deployment guide
 
 ---
 

@@ -6,7 +6,7 @@ services:
     region: oregon
     plan: free
     buildCommand: cd api && npm install && cd ../shared/queue && npm install
-    startCommand: cd api && node server.js
+    startCommand: cd api && node src/server.js
     envVars:
       - key: NODE_ENV
         value: production
@@ -26,7 +26,7 @@ services:
     region: oregon
     plan: free
     buildCommand: cd worker && npm install && cd ../shared/queue && npm install
-    startCommand: cd worker && node index.js
+    startCommand: cd worker && node src/index.js
     envVars:
       - key: NODE_ENV
         value: production

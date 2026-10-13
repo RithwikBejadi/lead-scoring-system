@@ -5,4 +5,4 @@ COPY shared/queue/package*.json ../shared/queue/
 RUN npm install && cd ../shared/queue && npm install
 COPY api/ ./
 COPY shared/ ../shared/
-CMD ["node", "server.js"]
+CMD ["node", "src/server.js"]

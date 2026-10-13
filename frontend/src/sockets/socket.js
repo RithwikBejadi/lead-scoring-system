@@ -1,5 +1,5 @@
 /**
- * FILE: sockets/socket.js
+ * FILE: frontend/src/sockets/socket.js
  * PURPOSE: Socket.IO client configuration for real-time updates
  */
 

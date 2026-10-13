@@ -1,8 +1,11 @@
 **/node_modules
-npm-debug.log
+**/.env
+**/*.log
 .git
-.env
+.idea
 .DS_Store
 *.md
 docs/
 tests/
+frontend/
+scripts/

@@ -1,5 +1,5 @@
 /**
- * FILE: contexts/ToastContext.jsx
+ * FILE: frontend/src/contexts/ToastContext.jsx
  * PURPOSE: Toast notification system for user feedback
  */
 

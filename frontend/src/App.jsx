@@ -1,13 +1,13 @@
 import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
-import Sidebar from "./app/layout/Sidebar.jsx";
-import Spinner, { FullPageSpinner } from "./shared/ui/Spinner.jsx";
+import Sidebar from "./components/layout/Sidebar.jsx";
+import Spinner, { FullPageSpinner } from "./components/ui/Spinner.jsx";
 
 // ── Auth pages (small, eager-load) ───────────────────────────────────────────
-import SignIn from "./pages/SignIn.jsx";
-import SignUp from "./pages/SignUp.jsx";
-import Landing from "./pages/Landing.jsx";
+import SignInPage from "./pages/auth/SignInPage.jsx";
+import SignUpPage from "./pages/auth/SignUpPage.jsx";
+import LandingPage from "./pages/landing/LandingPage.jsx";
 
 // ── App pages (lazy for code-splitting) ─────────────────────────────────────
 const CommandCenterPage = lazy(() => import("./pages/command/CommandCenterPage.jsx"));
@@ -72,17 +72,17 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/landing" element={<Landing />} />
+      <Route path="/landing" element={<LandingPage />} />
       <Route
         path="/login"
         element={
-          isAuthenticated ? <Navigate to="/command" replace /> : <SignIn />
+          isAuthenticated ? <Navigate to="/command" replace /> : <SignInPage />
         }
       />
       <Route
         path="/signup"
         element={
-          isAuthenticated ? <Navigate to="/command" replace /> : <SignUp />
+          isAuthenticated ? <Navigate to="/command" replace /> : <SignUpPage />
         }
       />
       <Route

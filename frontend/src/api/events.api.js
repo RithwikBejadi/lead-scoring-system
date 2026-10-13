@@ -1,34 +1,27 @@
-/**
- * FILE: api/events.api.js
- * PURPOSE: Event ingestion API client
- */
-
-import api from "./axios.config";
+import api from "./client";
 
 export const eventsApi = {
-  /**
-   * Create single event
-   */
-  create: async (eventData) => {
-    const response = await api.post("/events", eventData);
-    return response.data;
+  /** GET /api/events — list recent raw events */
+  list: async (params = {}) => {
+    const r = await api.get("/events", { params });
+    return r.data;
   },
 
-  /**
-   * Create multiple events in batch
-   */
-  createBatch: async (events) => {
-    const response = await api.post("/events/batch", { events });
-    return response.data;
+  /** GET /api/events/:id — single event */
+  getById: async (id) => {
+    const r = await api.get(`/events/${id}`);
+    return r.data;
   },
 
-  /**
-   * Get events list with filtering
-   */
-  getAll: async (params = {}) => {
-    const response = await api.get("/events", { params });
-    return response.data;
+  /** GET /api/leads/:leadId/timeline — session timeline for a lead */
+  getSession: async (leadId) => {
+    const r = await api.get(`/leads/${leadId}/timeline`);
+    return r.data;
+  },
+
+  /** POST /api/events/ingest — push a new event */
+  ingest: async (payload) => {
+    const r = await api.post("/events/ingest", payload);
+    return r.data;
   },
 };
-
-export default eventsApi;

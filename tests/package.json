@@ -8,7 +8,8 @@
     "metrics": "node metrics-collector.js --duration=60",
     "test:light": "node load-test.js --events=1000 --concurrent=50",
     "test:stress": "node load-test.js --events=50000 --concurrent=200",
-    "test:breaking": "node load-test.js --events=100000 --concurrent=300"
+    "test:breaking": "node load-test.js --events=100000 --concurrent=300",
+    "verify-load": "node verify-load.js"
   },
   "dependencies": {
     "axios": "^1.13.2",

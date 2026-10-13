@@ -2,13 +2,17 @@
   "name": "worker",
   "version": "1.0.0",
   "description": "Lead scoring worker service",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "NODE_ENV=development node index.js",
-    "prod": "NODE_ENV=production node index.js"
+    "start": "node src/index.js",
+    "dev": "NODE_ENV=development node --watch src/index.js",
+    "prod": "NODE_ENV=production node src/index.js"
   },
-  "keywords": ["worker", "queue", "lead-scoring"],
+  "keywords": [
+    "worker",
+    "queue",
+    "lead-scoring"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
@@ -16,7 +20,6 @@
     "bull": "^4.16.5",
     "dotenv": "^17.2.3",
     "express": "^4.18.2",
-    "mongodb": "^7.0.0",
     "mongoose": "^9.1.3"
   }
 }

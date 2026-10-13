@@ -1,9 +1,9 @@
 /**
- * FILE: api/analytics.api.js
+ * FILE: frontend/src/api/analytics.api.js
  * PURPOSE: Analytics API client for dashboard statistics
  */
 
-import api from "./axios.config";
+import api from "./client";
 
 export const analyticsApi = {
   /**

@@ -6,11 +6,11 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { eventsApi } from "../../features/events/events.api.js";
+import { eventsApi } from "../../api/events.api.js";
 import { leadsApi } from "../../api/leads.api.js";
 import { initSocket } from "../../sockets/socket.js";
-import Badge from "../../shared/ui/Badge.jsx";
-import Spinner from "../../shared/ui/Spinner.jsx";
+import Badge from "../../components/ui/Badge.jsx";
+import Spinner from "../../components/ui/Spinner.jsx";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
